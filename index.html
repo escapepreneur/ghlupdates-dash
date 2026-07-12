@@ -163,7 +163,7 @@ async function renderEmail() {
 async function renderSettings() {
   const view = document.getElementById('view');
   const s = DATA.settings || {};
-  const rate = s.digest_rate || { qty: 25, period: 'minute' };
+  const rate = s.digest_rate || {};
   const dayOpts = DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('');
   const hourOpts = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour === h ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`).join('');
   const perOpts = ['minute','hour','day'].map((p) => `<option value="${p}" ${rate.period === p ? 'selected' : ''}>per ${p}</option>`).join('');
@@ -181,9 +181,9 @@ async function renderSettings() {
     <div class="card">
       <h2 class="sec">Send rate (drip)</h2>
       <div class="row"><label>Send</label>
-        <input type="number" id="rq" value="${Number(rate.qty) || 25}" min="1" style="min-width:90px"> emails
+        <input type="number" id="rq" value="${rate.qty != null ? rate.qty : ''}" min="1" placeholder="e.g. 25" style="min-width:90px"> emails
         <select id="rp">${perOpts}</select></div>
-      <p class="muted">Capped at 25/minute to protect deliverability.</p>
+      <p class="muted">The exact pace your emails go out. Choose what suits your list and your sending reputation.</p>
     </div>
     <div class="card">
       <h2 class="sec">Links</h2>
