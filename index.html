@@ -62,6 +62,7 @@ let SESSION = null, DATA = null, TAB = 'email';
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+const TZS = ['Australia/Brisbane','Australia/Sydney','Australia/Melbourne','Australia/Adelaide','Australia/Perth','Australia/Darwin','Pacific/Auckland','Asia/Singapore','Asia/Dubai','Asia/Kolkata','Europe/London','Europe/Dublin','Europe/Paris','Europe/Berlin','America/New_York','America/Chicago','America/Denver','America/Los_Angeles','America/Toronto','UTC'];
 
 async function api(action, body, a) {
   const r = await fetch(`${DASH}?action=${action}` + (a ? `&a=${encodeURIComponent(a)}` : ''), {
@@ -166,12 +167,15 @@ async function renderSettings() {
   const dayOpts = DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('');
   const hourOpts = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour === h ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`).join('');
   const perOpts = ['minute','hour','day'].map((p) => `<option value="${p}" ${rate.period === p ? 'selected' : ''}>per ${p}</option>`).join('');
+  const tz = s.digest_timezone || 'Australia/Brisbane';
+  const tzList = TZS.includes(tz) ? TZS : [tz, ...TZS];
+  const tzOpts = tzList.map((z) => `<option value="${esc(z)}" ${z === tz ? 'selected' : ''}>${esc(z)}</option>`).join('');
   view.innerHTML = `
     <div class="card">
       <h2 class="sec">Send schedule</h2>
       <div class="row"><label>Day</label><select id="day">${dayOpts}</select>
         <label style="min-width:auto">Time</label><select id="hour">${hourOpts}</select></div>
-      <div class="row"><label>Timezone</label><input type="text" id="tz" value="${esc(s.digest_timezone || 'Australia/Brisbane')}" style="min-width:220px" placeholder="e.g. Australia/Brisbane"></div>
+      <div class="row"><label>Timezone</label><select id="tz" style="min-width:220px">${tzOpts}</select></div>
       <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled !== false ? 'checked' : ''}></div>
     </div>
     <div class="card">
