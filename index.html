@@ -38,7 +38,10 @@
   .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
   .row label{font-size:13px;font-weight:600;min-width:130px}
   input[type=text],input[type=number],select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;min-width:120px}
-  iframe.preview{width:100%;height:620px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  iframe.preview{width:100%;height:560px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
+  .col-preview{position:sticky;top:16px}
+  @media(max-width:820px){.builder{grid-template-columns:1fr}.col-preview{position:static}}
   .stat{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-right:10px;font-size:14px}
   .stat b{font-size:18px;display:block}
   .login{max-width:380px;margin:12vh auto;text-align:center}
@@ -142,14 +145,21 @@ async function renderEmail() {
     </div>
   </div>`;
 
-  view.innerHTML = `${stat}
-    <h2 class="sec">Preview</h2>
-    <div class="card"><div class="muted" style="margin-bottom:10px">Subject: <b>${esc(prev.subject || '')}</b></div>
-      <iframe class="preview" srcdoc="${esc(prev.html || '<p style=&quot;padding:20px&quot;>No posts selected.</p>')}"></iframe>
-    </div>
-    <h2 class="sec" style="margin-top:24px">Published — tick the ones to include</h2>
-    ${published.length ? published.map(postRow).join('') : '<p class="muted">Nothing published yet.</p>'}
-    ${others.length ? `<h2 class="sec" style="margin-top:24px">Drafts &amp; flagged</h2>${others.map(postRow).join('')}` : ''}`;
+  view.innerHTML = `
+    <div class="builder">
+      <div class="col-list">
+        <h2 class="sec">Published — tick to include</h2>
+        ${published.length ? published.map(postRow).join('') : '<p class="muted">Nothing published yet.</p>'}
+        ${others.length ? `<h2 class="sec" style="margin-top:24px">Drafts &amp; flagged</h2>${others.map(postRow).join('')}` : ''}
+      </div>
+      <div class="col-preview">
+        ${stat}
+        <h2 class="sec">Preview</h2>
+        <div class="card"><div class="muted" style="margin-bottom:10px">Subject: <b>${esc(prev.subject || '')}</b></div>
+          <iframe class="preview" srcdoc="${esc(prev.html || '<p style=&quot;padding:20px&quot;>No posts selected.</p>')}"></iframe>
+        </div>
+      </div>
+    </div>`;
 
   view.querySelectorAll('.post').forEach((row) => {
     const id = row.dataset.id;
