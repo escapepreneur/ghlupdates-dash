@@ -22,7 +22,7 @@
   .tabs{display:flex;gap:8px;margin:22px 0 18px}
   .tabs button{border-radius:999px}
   .tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .post{display:flex;gap:14px;align-items:flex-start}
   .post .body{flex:1}
   .post h3{margin:0 0 4px;font-size:16px}
@@ -42,8 +42,9 @@
   .builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
   .col-preview{position:sticky;top:16px}
   @media(max-width:820px){.builder{grid-template-columns:1fr}.col-preview{position:static}}
-  .stat{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-right:10px;font-size:14px}
-  .stat b{font-size:18px;display:block}
+  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
+  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .stat b{font-size:26px;display:block;color:var(--brand);font-weight:700;line-height:1.1;margin-bottom:2px}
   .login{max-width:380px;margin:12vh auto;text-align:center}
   .login .card{padding:28px 26px}
   .login input{width:100%;margin:10px 0}
@@ -125,10 +126,10 @@ async function renderEmail() {
   const published = (posts || []).filter((p) => p.status === 'published');
   const others = (posts || []).filter((p) => p.status !== 'published');
 
-  const stat = `<div style="margin-bottom:16px">
-    <span class="stat"><b>${prev.post_count ?? 0}</b> in this email</span>
-    <span class="stat"><b>${prev.recipient_count ?? '—'}</b> recipients</span>
-    <span class="stat"><b>${published.length}</b> published</span>
+  const kpis = `<div class="kpis">
+    <div class="stat"><b>${prev.post_count ?? 0}</b>in this email</div>
+    <div class="stat"><b>${prev.recipient_count ?? '—'}</b>recipients</div>
+    <div class="stat"><b>${published.length}</b>published</div>
   </div>`;
 
   const postRow = (p) => `<div class="card post" data-id="${p.id}">
@@ -145,7 +146,7 @@ async function renderEmail() {
     </div>
   </div>`;
 
-  view.innerHTML = `
+  view.innerHTML = `${kpis}
     <div class="builder">
       <div class="col-list">
         <h2 class="sec">Published — tick to include</h2>
@@ -153,7 +154,6 @@ async function renderEmail() {
         ${others.length ? `<h2 class="sec" style="margin-top:24px">Drafts &amp; flagged</h2>${others.map(postRow).join('')}` : ''}
       </div>
       <div class="col-preview">
-        ${stat}
         <h2 class="sec">Preview</h2>
         <div class="card"><div class="muted" style="margin-bottom:10px">Subject: <b>${esc(prev.subject || '')}</b></div>
           <iframe class="preview" srcdoc="${esc(prev.html || '<p style=&quot;padding:20px&quot;>No posts selected.</p>')}"></iframe>
