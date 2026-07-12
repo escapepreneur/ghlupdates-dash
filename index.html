@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Updates Dashboard</title>
+<style>
+  :root { --brand:#209A9B; --ink:#1a1d24; --muted:#6b7280; --line:#e6e8ec; --bg:#f6f7f9; }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
+  a{color:var(--brand)}
+  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 80px}
+  header.bar{display:flex;align-items:center;gap:12px;padding:16px 20px;background:#fff;border-bottom:1px solid var(--line)}
+  header.bar img{height:30px;width:auto}
+  header.bar .nm{font-weight:700;font-size:18px}
+  header.bar .sp{flex:1}
+  header.bar .who{font-size:13px;color:var(--muted)}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:#fff;padding:8px 14px}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+  button.ghost{background:#fff}
+  button:disabled{opacity:.5;cursor:default}
+  .tabs{display:flex;gap:8px;margin:22px 0 18px}
+  .tabs button{border-radius:999px}
+  .tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px}
+  .post{display:flex;gap:14px;align-items:flex-start}
+  .post .body{flex:1}
+  .post h3{margin:0 0 4px;font-size:16px}
+  .post p{margin:0;color:#4a4f5a;font-size:14px}
+  .pill{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;text-transform:uppercase;letter-spacing:.03em}
+  .pill.published{background:#e7f6ee;color:#1c8a54}
+  .pill.drafted{background:#eef0f3;color:#6b7280}
+  .pill.flagged{background:#fdecec;color:#c0392b}
+  .post .acts{display:flex;flex-direction:column;gap:8px;align-items:flex-end;min-width:150px}
+  label.chk{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink)}
+  input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand)}
+  .muted{color:var(--muted);font-size:13px}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+  .row label{font-size:13px;font-weight:600;min-width:130px}
+  input[type=text],input[type=number],select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;min-width:120px}
+  iframe.preview{width:100%;height:620px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .stat{display:inline-block;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 14px;margin-right:10px;font-size:14px}
+  .stat b{font-size:18px;display:block}
+  .login{max-width:380px;margin:12vh auto;text-align:center}
+  .login .card{padding:28px 26px}
+  .login input{width:100%;margin:10px 0}
+  .note{font-size:12px;color:var(--muted);margin-top:10px}
+  h2.sec{font-size:16px;margin:0 0 12px}
+</style>
+</head>
+<body>
+<div id="app"><div class="wrap"><p class="muted">Loading…</p></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL = 'https://gmqysuxbjucyiqfdddzu.supabase.co';
+const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtcXlzdXhianVjeWlxZmRkZHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxODQ0MzUsImV4cCI6MjA5Nzc2MDQzNX0._PmftWsju9T0SiCafVvTm1g8Hq3aV_0Na9gKZbvSxoY';
+const DASH = SUPABASE_URL + '/functions/v1/dash';
+const sb = window.supabase.createClient(SUPABASE_URL, ANON);
+
+let SESSION = null, DATA = null, TAB = 'email';
+const app = document.getElementById('app');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+async function api(action, body, a) {
+  const r = await fetch(`${DASH}?action=${action}` + (a ? `&a=${encodeURIComponent(a)}` : ''), {
+    method: body ? 'POST' : 'GET',
+    headers: { Authorization: `Bearer ${SESSION.access_token}`, apikey: ANON, 'Content-Type': 'application/json' },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  return r.json();
+}
+
+function renderLogin(msg) {
+  app.innerHTML = `<div class="login"><div class="card">
+    <h2 class="sec">Updates Dashboard</h2>
+    <p class="muted">Sign in with a magic link.</p>
+    <input id="em" type="text" placeholder="you@example.com" value="karen@escapepreneur.com">
+    <button class="primary" style="width:100%" id="go">Send magic link</button>
+    <p class="note" id="msg">${msg || ''}</p>
+  </div></div>`;
+  document.getElementById('go').onclick = async () => {
+    const email = document.getElementById('em').value.trim();
+    document.getElementById('msg').textContent = 'Sending…';
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split('#')[0] } });
+    document.getElementById('msg').textContent = error ? error.message : 'Check your inbox for the link.';
+  };
+}
+
+async function renderApp() {
+  app.innerHTML = `<div class="wrap"><p class="muted">Loading your dashboard…</p></div>`;
+  DATA = await api('agency');
+  if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
+  const brand = DATA.agency.brand_primary || '#209A9B';
+  document.documentElement.style.setProperty('--brand', brand);
+  const logo = DATA.agency.logo_url ? `<img src="${esc(DATA.agency.logo_url)}" alt="${esc(DATA.agency.name)}">` : '';
+  app.innerHTML = `
+    <header class="bar">${logo}<span class="nm">${esc(DATA.agency.name)}</span>
+      <span class="muted" style="font-weight:400"> · Updates Dashboard</span>
+      <span class="sp"></span>
+      <span class="who">${esc(SESSION.user.email)}</span>
+      <button class="ghost" id="out">Sign out</button>
+    </header>
+    <div class="wrap">
+      <div class="tabs">
+        <button data-t="email" class="${TAB==='email'?'on':''}">This week's email</button>
+        <button data-t="settings" class="${TAB==='settings'?'on':''}">Settings</button>
+      </div>
+      <div id="view"></div>
+    </div>`;
+  document.getElementById('out').onclick = () => sb.auth.signOut();
+  app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { TAB = b.dataset.t; renderApp(); });
+  if (TAB === 'email') renderEmail(); else renderSettings();
+}
+
+async function renderEmail() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<p class="muted">Loading posts…</p>`;
+  const [{ posts }, prev] = await Promise.all([api('posts'), api('preview')]);
+  const published = (posts || []).filter((p) => p.status === 'published');
+  const others = (posts || []).filter((p) => p.status !== 'published');
+
+  const stat = `<div style="margin-bottom:16px">
+    <span class="stat"><b>${prev.post_count ?? 0}</b> in this email</span>
+    <span class="stat"><b>${prev.recipient_count ?? '—'}</b> recipients</span>
+    <span class="stat"><b>${published.length}</b> published</span>
+  </div>`;
+
+  const postRow = (p) => `<div class="card post" data-id="${p.id}">
+    <div class="body">
+      <span class="pill ${p.status}">${p.status}</span>
+      <h3>${esc(p.title)}</h3>
+      <p>${esc(p.description || '')}</p>
+    </div>
+    <div class="acts">
+      ${p.status === 'published'
+        ? `<label class="chk"><input type="checkbox" class="dig" ${p.in_digest ? 'checked' : ''}> In email</label>
+           <button class="ghost hold">Unpublish</button>`
+        : `<button class="primary pub">Publish</button>`}
+    </div>
+  </div>`;
+
+  view.innerHTML = `${stat}
+    <h2 class="sec">Preview</h2>
+    <div class="card"><div class="muted" style="margin-bottom:10px">Subject: <b>${esc(prev.subject || '')}</b></div>
+      <iframe class="preview" srcdoc="${esc(prev.html || '<p style=&quot;padding:20px&quot;>No posts selected.</p>')}"></iframe>
+    </div>
+    <h2 class="sec" style="margin-top:24px">Published — tick the ones to include</h2>
+    ${published.length ? published.map(postRow).join('') : '<p class="muted">Nothing published yet.</p>'}
+    ${others.length ? `<h2 class="sec" style="margin-top:24px">Drafts &amp; flagged</h2>${others.map(postRow).join('')}` : ''}`;
+
+  view.querySelectorAll('.post').forEach((row) => {
+    const id = row.dataset.id;
+    const dig = row.querySelector('.dig');
+    if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); renderEmail(); };
+    const pub = row.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderEmail(); };
+    const hold = row.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderEmail(); };
+  });
+}
+
+async function renderSettings() {
+  const view = document.getElementById('view');
+  const s = DATA.settings || {};
+  const rate = s.digest_rate || { qty: 25, period: 'minute' };
+  const dayOpts = DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('');
+  const hourOpts = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour === h ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`).join('');
+  const perOpts = ['minute','hour','day'].map((p) => `<option value="${p}" ${rate.period === p ? 'selected' : ''}>per ${p}</option>`).join('');
+  view.innerHTML = `
+    <div class="card">
+      <h2 class="sec">Send schedule</h2>
+      <div class="row"><label>Day</label><select id="day">${dayOpts}</select>
+        <label style="min-width:auto">Time</label><select id="hour">${hourOpts}</select></div>
+      <div class="row"><label>Timezone</label><input type="text" id="tz" value="${esc(s.digest_timezone || 'Australia/Brisbane')}" style="min-width:220px" placeholder="e.g. Australia/Brisbane"></div>
+      <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled !== false ? 'checked' : ''}></div>
+    </div>
+    <div class="card">
+      <h2 class="sec">Send rate (drip)</h2>
+      <div class="row"><label>Send</label>
+        <input type="number" id="rq" value="${Number(rate.qty) || 25}" min="1" style="min-width:90px"> emails
+        <select id="rp">${perOpts}</select></div>
+      <p class="muted">Capped at 25/minute to protect deliverability.</p>
+    </div>
+    <div class="card">
+      <h2 class="sec">Links</h2>
+      <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url || '')}" style="min-width:320px"></div>
+      <p class="muted">Where the email's bottom button points (your full updates page).</p>
+    </div>
+    <div class="card">
+      <h2 class="sec">Recipients</h2>
+      <p class="muted">${s.segment_status_count || 0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
+    </div>
+    <button class="primary" id="save">Save settings</button>
+    <span class="muted" id="saved" style="margin-left:12px"></span>`;
+  document.getElementById('save').onclick = async () => {
+    const body = {
+      digest_day: Number(document.getElementById('day').value),
+      digest_hour: Number(document.getElementById('hour').value),
+      digest_timezone: document.getElementById('tz').value.trim(),
+      digest_enabled: document.getElementById('en').checked,
+      all_updates_url: document.getElementById('au').value.trim(),
+      digest_rate: { qty: Number(document.getElementById('rq').value), period: document.getElementById('rp').value },
+    };
+    document.getElementById('saved').textContent = 'Saving…';
+    const r = await api('settings', body);
+    document.getElementById('saved').textContent = r.ok ? 'Saved ✓' : (r.error || 'Error');
+    DATA = await api('agency');
+  };
+}
+
+function route() { if (SESSION) renderApp(); else renderLogin(); }
+sb.auth.onAuthStateChange((_e, s) => { SESSION = s; route(); });
+sb.auth.getSession().then(({ data }) => { SESSION = data.session; route(); });
+</script>
+</body>
+</html>
