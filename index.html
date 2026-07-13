@@ -148,8 +148,8 @@
   .field.inline > *{margin:0}
   .wtoggle{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer}
   .wtoggle input{margin-top:2px;width:18px;height:18px;flex:none}
-  .wtoggle .tt{font-size:14px;font-weight:600}
-  .wtoggle .td{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .wtoggle .tt{display:block;font-size:14px;font-weight:600}
+  .wtoggle .td{display:block;font-size:12.5px;color:var(--muted);margin-top:3px;line-height:1.45}
   .wizfoot{display:flex;align-items:center;gap:12px;margin-top:26px}
   .wizfoot .sp{flex:1}
   .lnk{background:none;border:0;color:var(--muted);font-size:14px;cursor:pointer;padding:8px 4px}
@@ -304,6 +304,9 @@ function renderWizard() {
         <li>Enable scopes: <b>View Contacts</b> and <b>Send Conversations</b></li>
         <li>Copy the token, and your Location ID (Settings → Business Profile)</li>
       </ol>
+      <div style="background:#eef5fe;border:1px solid #cfe0fb;border-radius:11px;padding:13px 15px;font-size:12.5px;color:#2f5b8f;line-height:1.5;margin-bottom:18px">
+        <b>Safe to connect.</b> We only ask for <b>View Contacts</b> and <b>Send Conversations</b> — no access to billing, settings, or deleting anything. Your token is stored encrypted, used only to send your weekly email, and you can revoke it in HighLevel anytime.
+      </div>
       <div class="field"><label>Private Integration token</label><input type="text" id="wtok" placeholder="pit-…"></div>
       <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt"></div>
       <div style="display:flex;align-items:center;gap:12px"><button class="mini go" id="wverify" style="height:38px">Verify &amp; connect</button><span class="muted" id="wvmsg"></span></div>
@@ -312,7 +315,7 @@ function renderWizard() {
     inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
       <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
       <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
-      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Run a community you'd post a weekly round-up into? Turns on the Community feature.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll post a weekly round-up of updates into it for you, alongside the email.</span></span></label>
       ${foot('Continue', true)}`;
   } else if (key === 'schedule') {
     const dsel = `<select id="wday"><option value="">Choose a day</option>${DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
