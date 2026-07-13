@@ -65,6 +65,13 @@
   .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .kpi b{display:block;font-size:28px;font-weight:700;color:var(--blue);line-height:1.05}
   .kpi span{font-size:12.5px;color:var(--muted)}
+  .actbar{display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:12px;margin-bottom:18px;font-size:14px;border:1px solid var(--line)}
+  .actbar.on{background:var(--ok-bg);border-color:#bfe4cf;color:#14683f}
+  .actbar.off{background:#fff8ec;border-color:#f2e2bf;color:#7a5a00}
+  .actbar .sp{flex:1}.actbar b{font-weight:700}
+  .tgl{border:0;border-radius:9px;font-weight:600;font-size:13px;padding:9px 15px;cursor:pointer}
+  .tgl.go{background:var(--ok);color:#fff}
+  .tgl.stop{background:#fff;border:1px solid var(--line);color:var(--muted)}
   .builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
   .sec{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 5px}
   .sechint{font-size:12px;color:var(--muted);margin:0 0 12px}
@@ -508,6 +515,7 @@ async function renderEmail() {
   const included = (posts || []).filter((p) => p.status === 'published' && p.in_digest);
   const publishedCount = (posts || []).filter((p) => p.status === 'published').length;
   const sched = scheduleLabel(DATA.settings || {});
+  const active = DATA.agency.sending_active;
   const itemRow = (p) => `<div class="post"><div class="pbody">
     <div class="tags"><span class="pill published">included</span>${(p.categories||[]).slice(0,1).map((c)=>`<span class="pill cat">${esc(c)}</span>`).join('')}</div>
     <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description||'')}</div></div></div>`;
@@ -519,6 +527,9 @@ async function renderEmail() {
       <div class="sched">Scheduled <b>${esc(sched)}</b></div>
       <button class="btn" id="sendnow">Send now</button>
     </div>
+    ${active
+      ? `<div class="actbar on"><span>Weekly sending is <b>ON</b> — goes out automatically ${esc(sched)}.</span><span class="sp"></span><button class="tgl stop" id="acttoggle">Turn off</button></div>`
+      : `<div class="actbar off"><span>Weekly sending is <b>OFF</b>. Activate to start sending automatically on your schedule (${esc(sched)}).</span><span class="sp"></span><button class="tgl go" id="acttoggle">Activate sending</button></div>`}
     <div class="kpis">
       <div class="kpi"><b>${prev.post_count ?? 0}</b><span>in this email</span></div>
       <div class="kpi"><b>${prev.recipient_count ?? '—'}</b><span>recipients</span></div>
@@ -539,7 +550,20 @@ async function renderEmail() {
         </div>
       </div>
     </div>`;
-  document.getElementById('sendnow').onclick = () => alert('Send now is coming next — the weekly send currently runs through the pipeline. This button will trigger a manual drip send.');
+  const tog = document.getElementById('acttoggle');
+  if (tog) tog.onclick = async () => {
+    if (!active && !confirm(`Turn ON automatic weekly sending?\n\nYour email will then go out to your members every ${sched}.`)) return;
+    tog.disabled = true;
+    await api('settings', { sending_active: !active });
+    DATA = await api('agency'); renderEmail();
+  };
+  document.getElementById('sendnow').onclick = async () => {
+    const n = prev.recipient_count, cnt = prev.post_count || 0;
+    if (!cnt) { alert('No posts are selected for the email yet. Tick "In email" on a published post first.'); return; }
+    if (!confirm(`Send this week's email now?\n\n${cnt} update${cnt === 1 ? '' : 's'} to ${n != null ? n + ' recipients' : 'your members'}.\nThis goes out from your own HighLevel, drip-paced at your chosen rate.`)) return;
+    const r = await api('send-now');
+    alert(r.ok ? 'Queued. Your email will start going out shortly (drip-paced).' : (r.error || 'Could not queue the send.'));
+  };
 }
 
 async function renderSettings() {
