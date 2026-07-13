@@ -334,8 +334,17 @@ function renderWizard() {
       <div class="field inline"><input type="number" id="wqty" min="1" value="${r.qty != null ? r.qty : ''}" placeholder="e.g. 25" style="max-width:110px"> emails ${psel}</div>
       ${foot('Continue', true)}`;
   } else if (key === 'page') {
-    inner = `<h1>Your updates page</h1><p class="lead">Your email links to your full updates page. Use the page we host, or point to your own.</p>
-      <div class="field"><label>"See all updates" link</label><input type="text" id="wurl" value="${esc(s.all_updates_url || '')}" placeholder="${esc(ownedUrl)}"><div class="hint">Leave blank to use your hosted page.</div></div>
+    const cd = s.custom_domain || '', au = s.all_updates_url || '';
+    const mode = cd ? 'sub' : (au ? 'url' : 'hosted');
+    inner = `<h1>Your updates page</h1><p class="lead">Where should the "See all updates" button in your email point?</p>
+      <label class="wtoggle"><input type="radio" name="pmode" value="sub" ${mode === 'sub' ? 'checked' : ''}><span><span class="tt">Your own subdomain</span><span class="td">We host your branded page on your domain (e.g. updates.yourbrand.com), with automatic HTTPS. The full white-label look.</span></span></label>
+      <div id="psub" style="display:${mode === 'sub' ? 'block' : 'none'};margin:-4px 0 12px 30px">
+        <div class="field"><input type="text" id="wcd" value="${esc(cd)}" placeholder="updates.yourbrand.com"></div>
+        <div id="pdns"></div>
+      </div>
+      <label class="wtoggle"><input type="radio" name="pmode" value="url" ${mode === 'url' ? 'checked' : ''}><span><span class="tt">A page you already have</span><span class="td">Point to your existing blog or updates page.</span></span></label>
+      <div id="purl" style="display:${mode === 'url' ? 'block' : 'none'};margin:-4px 0 12px 30px"><div class="field"><input type="text" id="wurl2" value="${esc(au)}" placeholder="https://yourbrand.com/updates"></div></div>
+      <label class="wtoggle"><input type="radio" name="pmode" value="hosted" ${mode === 'hosted' ? 'checked' : ''}><span><span class="tt">Use our hosted page</span><span class="td">No setup needed — a clean branded page we host for you.</span></span></label>
       ${foot('Continue', true)}`;
   } else if (key === 'review') {
     const r = s.digest_rate || {};
@@ -380,6 +389,28 @@ function renderWizard() {
     };
   }
 
+  if (key === 'page') {
+    const dnsBox = () => {
+      const cd = gv('wcd').trim();
+      const el = document.getElementById('pdns'); if (!el) return;
+      el.innerHTML = cd
+        ? `<div class="hint" style="margin-bottom:6px">Add this record at your DNS provider:</div>
+           <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:11px 13px;line-height:1.7">
+             Type&nbsp;&nbsp;<b>CNAME</b><br>Name&nbsp;&nbsp;<b>${esc(cd)}</b><br>Target&nbsp;<b>connect.ghlupdates.com</b></div>
+           <div class="hint">Once you've added it, we issue the SSL certificate and activate your page — usually a few minutes.</div>`
+        : '';
+    };
+    const sync = () => {
+      const m = (document.querySelector('input[name="pmode"]:checked') || {}).value;
+      document.getElementById('psub').style.display = m === 'sub' ? 'block' : 'none';
+      document.getElementById('purl').style.display = m === 'url' ? 'block' : 'none';
+      if (m === 'sub') dnsBox();
+    };
+    app.querySelectorAll('input[name="pmode"]').forEach((r) => r.onchange = sync);
+    const cdIn = document.getElementById('wcd'); if (cdIn) cdIn.oninput = dnsBox;
+    dnsBox();
+  }
+
   const next = document.getElementById('wnext');
   if (next) next.onclick = async () => {
     next.disabled = true;
@@ -388,7 +419,12 @@ function renderWizard() {
       else if (key === 'content') await api('settings', { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') });
       else if (key === 'schedule') { const d = gv('wday'), h = gv('whour'); if (d === '' || h === '') { showErr('Please choose a day and a time.'); next.disabled = false; return; } await api('settings', { digest_day: Number(d), digest_hour: Number(h), digest_timezone: gv('wtz'), digest_enabled: true }); }
       else if (key === 'rate') { const q = Number(gv('wqty')); if (!q || q < 1) { showErr('Enter how many emails to send per period.'); next.disabled = false; return; } await api('settings', { digest_rate: { qty: q, period: gv('wperiod') } }); }
-      else if (key === 'page') await api('settings', { all_updates_url: gv('wurl').trim() });
+      else if (key === 'page') {
+        const m = (document.querySelector('input[name="pmode"]:checked') || {}).value;
+        if (m === 'sub') { const cd = gv('wcd').trim().toLowerCase(); if (!cd) { showErr('Enter your subdomain (e.g. updates.yourbrand.com).'); next.disabled = false; return; } await api('settings', { custom_domain: cd, all_updates_url: 'https://' + cd }); }
+        else if (m === 'url') { await api('settings', { all_updates_url: gv('wurl2').trim(), custom_domain: null }); }
+        else { await api('settings', { all_updates_url: '', custom_domain: null }); }
+      }
       else if (key === 'review') { await api('finish'); SKIP_ONBOARD = false; DATA = await api('agency'); TAB = 'posts'; renderApp(); return; }
       wizGo(WIZ.step + 1);
     } catch (e) { showErr(String((e && e.message) || e)); next.disabled = false; }
