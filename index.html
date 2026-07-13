@@ -128,6 +128,43 @@
   .pill.st-in_progress{background:#e7f0ff;color:#2f6fd0}
   .pill.st-shipped{background:var(--ok-bg);color:var(--ok)}
   .pill.st-declined{background:#f3f4f6;color:#9aa0a6}
+  /* onboarding wizard */
+  .wiz{min-height:100vh;background:#141518;display:flex;flex-direction:column;align-items:center;padding:0 20px 40px}
+  .wiztop{width:100%;max-width:640px;display:flex;align-items:center;gap:14px;padding:22px 0 0}
+  .wiztop img{height:30px}
+  .wiztop .skip{margin-left:auto;color:#99a2ad;font-size:13px;background:none;border:0;cursor:pointer}
+  .wiztop .skip:hover{color:#fff}
+  .wprog{width:100%;max-width:640px;margin:18px 0 0;height:6px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden}
+  .wprog i{display:block;height:100%;background:var(--blue);border-radius:99px;transition:width .25s}
+  .wsteplabel{width:100%;max-width:640px;color:#7c8794;font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;margin:11px 0 0}
+  .wizcard{width:100%;max-width:640px;background:#fff;border-radius:16px;padding:32px 34px;margin:14px 0 0;box-shadow:0 20px 60px rgba(0,0,0,.30)}
+  .wizcard h1{font-size:23px;margin:0 0 6px}
+  .wizcard .lead{color:var(--muted);font-size:15px;margin:0 0 22px;line-height:1.55}
+  .field{margin-bottom:16px}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}
+  .field input[type=text],.field input[type=url],.field select,.field textarea{width:100%}
+  .field .hint{font-size:12px;color:var(--muted);margin-top:5px;line-height:1.4}
+  .field.inline{display:flex;gap:12px;align-items:center}
+  .field.inline > *{margin:0}
+  .wtoggle{display:flex;align-items:flex-start;gap:12px;padding:14px 16px;border:1px solid var(--line);border-radius:12px;margin-bottom:10px;cursor:pointer}
+  .wtoggle input{margin-top:2px;width:18px;height:18px;flex:none}
+  .wtoggle .tt{font-size:14px;font-weight:600}
+  .wtoggle .td{font-size:12.5px;color:var(--muted);margin-top:2px}
+  .wizfoot{display:flex;align-items:center;gap:12px;margin-top:26px}
+  .wizfoot .sp{flex:1}
+  .lnk{background:none;border:0;color:var(--muted);font-size:14px;cursor:pointer;padding:8px 4px}
+  .lnk:hover{color:var(--ink)}
+  .checklist{list-style:none;padding:0;margin:0}
+  .checklist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;font-size:14px}
+  .checklist li svg{width:18px;height:18px;color:var(--blue);flex:none;margin-top:2px}
+  .ok-badge{display:inline-flex;align-items:center;gap:6px;background:var(--ok-bg);color:var(--ok);font-size:13px;font-weight:600;padding:6px 12px;border-radius:99px;margin-bottom:14px}
+  .steps-num{list-style:none;padding:0;margin:0 0 18px;counter-reset:s}
+  .steps-num li{counter-increment:s;position:relative;padding:6px 0 6px 30px;font-size:13.5px;color:var(--ink)}
+  .steps-num li:before{content:counter(s);position:absolute;left:0;top:5px;width:20px;height:20px;border-radius:99px;background:var(--blue);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center}
+  .rev{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .rev:last-child{border-bottom:0}.rev .k{color:var(--muted)}.rev .v{font-weight:600;text-align:right}
+  .err{color:#c0392b;font-size:13px;margin-top:10px}
+  .swatch{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);padding:0;cursor:pointer;background:none}
   @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.builder{grid-template-columns:1fr}.pvwrap{position:static}.kpis{grid-template-columns:1fr}}
 </style>
 </head>
@@ -142,7 +179,7 @@ const DASH = SUPABASE_URL + '/functions/v1/dash';
 const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
-let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'all';
+let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'all', SKIP_ONBOARD = false, WIZ = { step: 0 };
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -198,6 +235,7 @@ async function renderApp() {
   app.innerHTML = `<div class="login"><div class="box"><p class="muted">Loading your dashboard…</p></div></div>`;
   DATA = await api('agency');
   if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
+  if (!DATA.agency.onboarded && !SKIP_ONBOARD) { renderWizard(); return; }
   const label = LABELS[TAB] || '';
   app.innerHTML = `<div class="app">
     <aside class="side">
@@ -226,6 +264,132 @@ async function renderApp() {
   else if (TAB === 'email') renderEmail();
   else if (TAB === 'requests') renderRequests();
   else renderSettings();
+}
+
+const WSTEPS = ['welcome', 'brand', 'hl', 'content', 'schedule', 'rate', 'page', 'review'];
+const WTITLES = { welcome: 'Welcome', brand: 'Your brand', hl: 'Connect HighLevel', content: 'What to include', schedule: 'When to send', rate: 'Send rate', page: 'Updates page', review: 'Review' };
+const CHK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-9"/></svg>';
+const gv = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
+const gc = (id) => { const e = document.getElementById(id); return e ? e.checked : false; };
+
+async function wizGo(n) { WIZ.step = Math.max(0, Math.min(WSTEPS.length - 1, n)); DATA = await api('agency'); renderWizard(); }
+
+function renderWizard() {
+  const a = DATA.agency || {}, s = DATA.settings || {};
+  const key = WSTEPS[WIZ.step];
+  const pct = Math.round((WIZ.step / (WSTEPS.length - 1)) * 100);
+  const ownedUrl = 'https://gmqysuxbjucyiqfdddzu.supabase.co/functions/v1/updates?a=' + encodeURIComponent(a.slug || 'esc-hub');
+  const foot = (nextLabel, back) => `<div class="wizfoot">${back ? '<button class="lnk" id="wback">Back</button>' : ''}<div class="sp"></div><button class="btn" id="wnext">${nextLabel || 'Continue'}</button></div><div class="err" id="werr" style="display:none"></div>`;
+  let inner = '';
+
+  if (key === 'welcome') {
+    inner = `<h1>Welcome to GHL Updates</h1>
+      <p class="lead">Let's get ${esc(a.name || 'your account')} set up — about 5 minutes. Here's what you'll need:</p>
+      <ul class="checklist">
+        <li>${CHK} Your logo and brand colour</li>
+        <li>${CHK} A HighLevel Private Integration token (View Contacts + Send Conversations)</li>
+        <li>${CHK} Roughly when you'd like your weekly email to go out</li>
+      </ul>${foot("Let's go", false)}`;
+  } else if (key === 'brand') {
+    inner = `<h1>Your brand</h1><p class="lead">This is what your clients see on your updates page and emails.</p>
+      <div class="field"><label>Business name</label><input type="text" id="wname" value="${esc(a.name || '')}"></div>
+      <div class="field"><label>Brand colour</label><div class="field inline"><input type="color" class="swatch" id="wcolor" value="${esc(a.brand_primary || '#3B8AF0')}"><input type="text" id="wcolorhex" value="${esc(a.brand_primary || '#3B8AF0')}" style="max-width:140px"></div><div class="hint">Used for buttons and links in your emails and page.</div></div>
+      <div class="field"><label>Logo URL</label><input type="text" id="wlogo" value="${esc(a.logo_url || '')}" placeholder="https://…/logo.png"><div class="hint">Paste a hosted image URL. Upload coming soon.</div></div>
+      ${foot('Continue', true)}`;
+  } else if (key === 'hl') {
+    inner = `<h1>Connect your HighLevel</h1><p class="lead">Your weekly email sends from your own HighLevel account, so it always comes from you.</p>
+      ${a.hl_connected ? `<div class="ok-badge">${CHK} Connected</div>` : ''}
+      <ol class="steps-num">
+        <li>In HighLevel: Settings → Private Integrations → New integration</li>
+        <li>Enable scopes: <b>View Contacts</b> and <b>Send Conversations</b></li>
+        <li>Copy the token, and your Location ID (Settings → Business Profile)</li>
+      </ol>
+      <div class="field"><label>Private Integration token</label><input type="text" id="wtok" placeholder="pit-…"></div>
+      <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt"></div>
+      <div style="display:flex;align-items:center;gap:12px"><button class="mini go" id="wverify" style="height:38px">Verify &amp; connect</button><span class="muted" id="wvmsg"></span></div>
+      ${foot('Continue', true)}`;
+  } else if (key === 'content') {
+    inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
+      <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Run a community you'd post a weekly round-up into? Turns on the Community feature.</span></span></label>
+      ${foot('Continue', true)}`;
+  } else if (key === 'schedule') {
+    const dsel = `<select id="wday"><option value="">Choose a day</option>${DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
+    const hsel = `<select id="whour"><option value="">Time</option>${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select>`;
+    const tzcur = s.digest_timezone || 'Australia/Brisbane';
+    const tzl = TZS.includes(tzcur) ? TZS : [tzcur, ...TZS];
+    const tzsel = `<select id="wtz">${tzl.map((z) => `<option value="${esc(z)}" ${z === tzcur ? 'selected' : ''}>${esc(z)}</option>`).join('')}</select>`;
+    inner = `<h1>When to send</h1><p class="lead">Pick the day and time your weekly email goes out, in your timezone.</p>
+      <div class="field inline">${dsel}${hsel}</div>
+      <div class="field"><label>Timezone</label>${tzsel}</div>
+      ${foot('Continue', true)}`;
+  } else if (key === 'rate') {
+    const r = s.digest_rate || {};
+    const psel = `<select id="wperiod">${['minute', 'hour', 'day'].map((p) => `<option value="${p}" ${r.period === p ? 'selected' : ''}>per ${p}</option>`).join('')}</select>`;
+    inner = `<h1>How fast to send</h1><p class="lead">We drip your emails at a pace you choose, to protect your sending reputation.</p>
+      <div class="field inline"><input type="number" id="wqty" min="1" value="${r.qty != null ? r.qty : ''}" placeholder="e.g. 25" style="max-width:110px"> emails ${psel}</div>
+      ${foot('Continue', true)}`;
+  } else if (key === 'page') {
+    inner = `<h1>Your updates page</h1><p class="lead">Your email links to your full updates page. Use the page we host, or point to your own.</p>
+      <div class="field"><label>"See all updates" link</label><input type="text" id="wurl" value="${esc(s.all_updates_url || '')}" placeholder="${esc(ownedUrl)}"><div class="hint">Leave blank to use your hosted page.</div></div>
+      ${foot('Continue', true)}`;
+  } else if (key === 'review') {
+    const r = s.digest_rate || {};
+    const row = (k, v) => `<div class="rev"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+    inner = `<h1>You're all set</h1><p class="lead">A quick check, then you're in.</p>
+      ${row('Business name', esc(a.name || '—'))}
+      ${row('Brand colour', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${esc(a.brand_primary || '#3B8AF0')};vertical-align:-1px;margin-right:6px"></span>${esc(a.brand_primary || '—')}`)}
+      ${row('Logo', a.logo_url ? 'Added' : 'Not set')}
+      ${row('HighLevel', a.hl_connected ? 'Connected' : 'Not connected yet')}
+      ${row('Labs', a.include_labs ? 'Included' : 'Off')}
+      ${row('Templates', a.include_templates ? 'Included' : 'Off')}
+      ${row('Community', a.community_enabled ? 'On' : 'Off')}
+      ${row('Schedule', esc(scheduleLabel(s)))}
+      ${row('Send rate', r.qty ? `${r.qty} per ${r.period}` : 'Not set')}
+      ${row('Updates page', s.all_updates_url ? esc(s.all_updates_url) : 'Hosted page')}
+      ${foot('Finish setup', true)}`;
+  }
+
+  app.innerHTML = `<div class="wiz">
+    <div class="wiztop"><img src="${GHL_LOGO}" alt="GHL Updates"><button class="skip" id="wskip">Skip for now &rarr;</button></div>
+    <div class="wprog"><i style="width:${pct}%"></i></div>
+    <div class="wsteplabel">Step ${WIZ.step + 1} of ${WSTEPS.length} · ${WTITLES[key]}</div>
+    <div class="wizcard">${inner}</div>
+  </div>`;
+
+  const skip = document.getElementById('wskip'); if (skip) skip.onclick = () => { SKIP_ONBOARD = true; renderApp(); };
+  const back = document.getElementById('wback'); if (back) back.onclick = () => wizGo(WIZ.step - 1);
+  const showErr = (m) => { const e = document.getElementById('werr'); if (e) { e.textContent = m; e.style.display = 'block'; } };
+
+  if (key === 'brand') {
+    const c = document.getElementById('wcolor'), t = document.getElementById('wcolorhex');
+    if (c && t) { c.oninput = () => { t.value = c.value; }; t.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(t.value)) c.value = t.value; }; }
+  }
+  if (key === 'hl') {
+    const vb = document.getElementById('wverify');
+    if (vb) vb.onclick = async () => {
+      const msg = document.getElementById('wvmsg'); vb.disabled = true; msg.textContent = 'Verifying…'; msg.style.color = '';
+      const r = await api('connect-hl', { token: gv('wtok'), location: gv('wloc') });
+      vb.disabled = false;
+      if (r.ok) { msg.textContent = '✓ Connected'; msg.style.color = 'var(--ok)'; DATA.agency.hl_connected = true; }
+      else { msg.textContent = r.error || 'Could not connect'; msg.style.color = '#c0392b'; }
+    };
+  }
+
+  const next = document.getElementById('wnext');
+  if (next) next.onclick = async () => {
+    next.disabled = true;
+    try {
+      if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim() });
+      else if (key === 'content') await api('settings', { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') });
+      else if (key === 'schedule') { const d = gv('wday'), h = gv('whour'); if (d === '' || h === '') { showErr('Please choose a day and a time.'); next.disabled = false; return; } await api('settings', { digest_day: Number(d), digest_hour: Number(h), digest_timezone: gv('wtz'), digest_enabled: true }); }
+      else if (key === 'rate') { const q = Number(gv('wqty')); if (!q || q < 1) { showErr('Enter how many emails to send per period.'); next.disabled = false; return; } await api('settings', { digest_rate: { qty: q, period: gv('wperiod') } }); }
+      else if (key === 'page') await api('settings', { all_updates_url: gv('wurl').trim() });
+      else if (key === 'review') { await api('finish'); SKIP_ONBOARD = false; DATA = await api('agency'); TAB = 'posts'; renderApp(); return; }
+      wizGo(WIZ.step + 1);
+    } catch (e) { showErr(String((e && e.message) || e)); next.disabled = false; }
+  };
 }
 
 async function renderPosts() {
