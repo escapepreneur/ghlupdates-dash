@@ -3,63 +3,118 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Updates Dashboard</title>
+<title>GHL Updates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  :root { --brand:#209A9B; --ink:#1a1d24; --muted:#6b7280; --line:#e6e8ec; --bg:#f6f7f9; }
+  :root{
+    --blue:#3B8AF0; --blue-h:#2F7CE0; --gold:#F5B301;
+    --ground:#F4F6F8; --card:#FFFFFF; --ink:#151A20; --muted:#5F6A76; --line:#E5E9EE;
+    --ok:#1C8A54; --ok-bg:#E7F6EE;
+    --side:#191C22; --side-line:rgba(255,255,255,.08); --side-tx:#D6DBE2;
+    --teal:#209A9B;
+  }
   *{box-sizing:border-box}
-  body{margin:0;font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.55}
-  a{color:var(--brand)}
-  .wrap{max-width:900px;margin:0 auto;padding:24px 20px 80px}
-  header.bar{display:flex;align-items:center;gap:12px;padding:16px 20px;background:#fff;border-bottom:1px solid var(--line)}
-  header.bar img{height:30px;width:auto}
-  header.bar .nm{font-weight:700;font-size:18px}
-  header.bar .sp{flex:1}
-  header.bar .who{font-size:13px;color:var(--muted)}
-  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid var(--line);background:#fff;padding:8px 14px}
-  button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
-  button.ghost{background:#fff}
-  button:disabled{opacity:.5;cursor:default}
-  .tabs{display:flex;gap:8px;margin:22px 0 18px}
-  .tabs button{border-radius:999px}
-  .tabs button.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
-  .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:14px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
-  .post{display:flex;gap:14px;align-items:flex-start}
-  .post .body{flex:1}
-  .post h3{margin:0 0 4px;font-size:16px}
-  .post p{margin:0;color:#4a4f5a;font-size:14px}
-  .pill{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 9px;text-transform:uppercase;letter-spacing:.03em}
-  .pill.published{background:#e7f6ee;color:#1c8a54}
-  .pill.drafted{background:#eef0f3;color:#6b7280}
-  .pill.flagged{background:#fdecec;color:#c0392b}
-  .post .acts{display:flex;flex-direction:column;gap:8px;align-items:flex-end;min-width:150px}
-  label.chk{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--ink)}
-  input[type=checkbox]{width:17px;height:17px;accent-color:var(--brand)}
-  .muted{color:var(--muted);font-size:13px}
-  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-  .row label{font-size:13px;font-weight:600;min-width:130px}
-  input[type=text],input[type=number],select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:8px;min-width:120px}
-  iframe.preview{width:100%;height:560px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  body{margin:0;font-family:'Poppins',-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:var(--ink);background:var(--ground);-webkit-font-smoothing:antialiased}
+  a{color:var(--blue);text-decoration:none}
+  button{font-family:inherit;cursor:pointer}
+  /* login */
+  .login{max-width:400px;margin:13vh auto;padding:0 20px}
+  .login .box{background:#fff;border:1px solid var(--line);border-radius:16px;padding:30px 28px;box-shadow:0 8px 30px rgba(16,40,60,.06);text-align:center}
+  .login img{height:38px;margin-bottom:8px}
+  .login h1{font-size:19px;margin:6px 0 4px}
+  .login p{color:var(--muted);font-size:14px;margin:0 0 18px}
+  .login input{width:100%;padding:11px 13px;border:1px solid var(--line);border-radius:10px;font:inherit;font-size:15px;margin-bottom:12px}
+  .btn{border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:600;font-size:14px;padding:0 18px;height:40px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
+  .btn:hover{background:var(--blue-h)}
+  .btn.block{width:100%;justify-content:center}
+  .btn:disabled{opacity:.55}
+  .note{font-size:12.5px;color:var(--muted);margin-top:12px;min-height:16px}
+  /* app shell */
+  .app{display:grid;grid-template-columns:238px 1fr;min-height:100vh}
+  .side{background:var(--side);color:var(--side-tx);padding:20px 15px;display:flex;flex-direction:column;gap:5px;border-right:1px solid var(--side-line)}
+  .side .brand{padding:6px 8px 18px}
+  .side .brand img{height:32px;width:auto;display:block}
+  .navlabel{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:#7c8794;margin:16px 10px 6px}
+  .nav{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;font-size:14px;font-weight:500;color:var(--side-tx);cursor:pointer;border:0;background:transparent;width:100%;text-align:left}
+  .nav svg{width:19px;height:19px;opacity:.85;flex:none}
+  .nav:hover{background:rgba(255,255,255,.06)}
+  .nav.on{background:var(--blue);color:#fff;font-weight:600}
+  .nav.on svg{opacity:1}
+  .nav.soon{opacity:.5;cursor:default}
+  .nav.soon:hover{background:transparent}
+  .nav em{margin-left:auto;font-style:normal;font-size:9px;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.12);padding:2px 7px;border-radius:99px}
+  .side .foot{margin-top:auto;font-size:11px;color:#6b7682;padding:8px}
+  .main{display:flex;flex-direction:column;min-width:0}
+  .top{display:flex;align-items:center;gap:12px;padding:13px 28px;background:#fff;border-bottom:1px solid var(--line)}
+  .crumb{font-size:13px;color:var(--muted)}.crumb b{color:var(--ink);font-weight:600}
+  .top .sp{flex:1}
+  .acct{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:99px;font-size:13px;font-weight:500;background:#fff}
+  .acct .av{width:28px;height:28px;border-radius:99px;background:#e8f0fd;color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .content{padding:26px 28px 46px;max-width:1180px;width:100%}
+  .head{display:flex;align-items:flex-end;gap:12px;margin-bottom:22px;flex-wrap:wrap}
+  .head h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+  .head p{margin:0;color:var(--muted);font-size:14px}
+  .head .sp{flex:1}
+  .sched{display:inline-flex;align-items:center;gap:7px;height:40px;font-size:13px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:0 14px;border-radius:10px}
+  .sched b{color:var(--ink);font-weight:600}
+  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px}
+  .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .kpi b{display:block;font-size:28px;font-weight:700;color:var(--blue);line-height:1.05}
+  .kpi span{font-size:12.5px;color:var(--muted)}
   .builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
-  .col-preview{position:sticky;top:16px}
-  @media(max-width:820px){.builder{grid-template-columns:1fr}.col-preview{position:static}}
-  .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:22px}
-  .stat{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13px;color:var(--muted);box-shadow:0 1px 2px rgba(16,24,40,.04)}
-  .stat b{font-size:26px;display:block;color:var(--brand);font-weight:700;line-height:1.1;margin-bottom:2px}
-  .login{max-width:380px;margin:12vh auto;text-align:center}
-  .login .card{padding:28px 26px}
-  .login input{width:100%;margin:10px 0}
-  .note{font-size:12px;color:var(--muted);margin-top:10px}
-  h2.sec{font-size:16px;margin:0 0 12px}
+  .sec{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 5px}
+  .sechint{font-size:12px;color:var(--muted);margin:0 0 12px}
+  .sechint b{color:var(--teal);font-weight:600}
+  .post{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:12px;display:flex;gap:13px;align-items:flex-start;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .post.sel{border-color:#bcd4f5;box-shadow:0 1px 2px rgba(59,138,240,.12)}
+  .chk{position:relative;flex:none;margin-top:2px;cursor:pointer}
+  .chk input{position:absolute;opacity:0;width:20px;height:20px;margin:0;cursor:pointer}
+  .chk .box{display:block;width:20px;height:20px;border-radius:6px;border:1.6px solid #cfd6dc;background:#fff}
+  .chk input:checked+.box{background:var(--blue);border-color:var(--blue)}
+  .chk input:checked+.box:after{content:'';position:absolute;left:7px;top:3px;width:5px;height:10px;border:solid #fff;border-width:0 2px 2px 0;transform:rotate(45deg)}
+  .pbody{flex:1;min-width:0}
+  .tags{display:flex;gap:6px;margin-bottom:7px;flex-wrap:wrap}
+  .pill{font-size:10.5px;font-weight:600;border-radius:99px;padding:2px 9px}
+  .pill.published{background:var(--ok-bg);color:var(--ok)}
+  .pill.drafted{background:#eef1f4;color:#5a6672}
+  .pill.flagged{background:#fdeceb;color:#c0392b}
+  .pill.cat{background:#eef1f4;color:#5a6672}
+  .pt{font-size:15px;font-weight:600;line-height:1.32;margin-bottom:4px}
+  .pd{font-size:13px;color:var(--muted);line-height:1.5}
+  .mini{flex:none;align-self:flex-start;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px}
+  .mini:hover{border-color:#cfd6dc;color:var(--ink)}
+  .mini.go{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  .pvwrap{position:sticky;top:18px}
+  iframe.preview{width:100%;height:560px;border:1px solid var(--line);border-radius:12px;background:#fff}
+  .frame{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 8px 26px rgba(16,40,38,.08)}
+  .frame .bar{display:flex;align-items:center;gap:6px;padding:11px 14px;border-bottom:1px solid var(--line);background:#fafbfc}
+  .frame .bar i{width:10px;height:10px;border-radius:99px;background:#e4e8ec;display:inline-block}
+  .frame .bar .subj{margin-left:8px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .frame .bar .subj b{color:var(--ink);font-weight:600}
+  .frame iframe{display:block;width:100%;height:540px;border:0;background:#fff}
+  /* settings */
+  .scard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);max-width:640px}
+  .scard h2{font-size:15px;margin:0 0 14px}
+  .row{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}
+  .row label{font-size:13px;font-weight:600;min-width:120px}
+  input[type=text],input[type=number],select{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:9px;min-width:120px}
+  input[type=text]:focus,input[type=number]:focus,select:focus{outline:2px solid rgba(59,138,240,.4);border-color:var(--blue)}
+  input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue)}
+  .muted{color:var(--muted);font-size:13px}
+  @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.builder{grid-template-columns:1fr}.pvwrap{position:static}.kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
-<div id="app"><div class="wrap"><p class="muted">Loading…</p></div></div>
+<div id="app"><div class="login"><div class="box"><p class="muted">Loading…</p></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL = 'https://gmqysuxbjucyiqfdddzu.supabase.co';
 const ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdtcXlzdXhianVjeWlxZmRkZHp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIxODQ0MzUsImV4cCI6MjA5Nzc2MDQzNX0._PmftWsju9T0SiCafVvTm1g8Hq3aV_0Na9gKZbvSxoY';
 const DASH = SUPABASE_URL + '/functions/v1/dash';
+const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
 let SESSION = null, DATA = null, TAB = 'email';
@@ -77,12 +132,30 @@ async function api(action, body, a) {
   return r.json();
 }
 
+const NAV_ICONS = {
+  mail: '<path d="M3 6.5A1.5 1.5 0 0 1 4.5 5h13A1.5 1.5 0 0 1 19 6.5v9A1.5 1.5 0 0 1 17.5 17h-13A1.5 1.5 0 0 1 3 15.5z"/><path d="m4 7 7 5 7-5"/>',
+  gear: '<circle cx="11" cy="11" r="3"/><path d="M11 2.5v2M11 17.5v2M2.5 11h2M17.5 11h2M5 5l1.4 1.4M15.6 15.6 17 17M17 5l-1.4 1.4M6.4 15.6 5 17"/>',
+  doc: '<path d="M6 3h6l4 4v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M12 3v4h4"/>',
+  clock: '<circle cx="11" cy="11" r="8"/><path d="M11 6.5V11l3 2"/>',
+  card: '<rect x="3" y="6" width="16" height="11" rx="2"/><path d="M3 9.5h16"/>',
+};
+const navBtn = (icon, label, tab, soon) => `<button class="nav${TAB===tab?' on':''}${soon?' soon':''}" ${soon?'':`data-tab="${tab}"`}>
+  <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${NAV_ICONS[icon]}</svg>
+  <span>${label}</span>${soon?'<em>soon</em>':''}</button>`;
+
+function scheduleLabel(s) {
+  if (s.digest_day == null || s.digest_hour == null) return 'Not scheduled';
+  const h = s.digest_hour, ap = h < 12 ? 'am' : 'pm', h12 = ((h + 11) % 12) + 1;
+  return `${DAYS[s.digest_day]}s ${h12}:00 ${ap}`;
+}
+function initials(email) { return (email || '?').slice(0, 2).toUpperCase(); }
+
 function renderLogin(msg) {
-  app.innerHTML = `<div class="login"><div class="card">
-    <h2 class="sec">Updates Dashboard</h2>
-    <p class="muted">Sign in with a magic link.</p>
+  app.innerHTML = `<div class="login"><div class="box">
+    <img src="${GHL_LOGO}" alt="GHL Updates">
+    <h1>Sign in</h1><p>We'll email you a magic link.</p>
     <input id="em" type="text" placeholder="you@example.com" value="karen@escapepreneur.com">
-    <button class="primary" style="width:100%" id="go">Send magic link</button>
+    <button class="btn block" id="go">Send magic link</button>
     <p class="note" id="msg">${msg || ''}</p>
   </div></div>`;
   document.getElementById('go').onclick = async () => {
@@ -94,117 +167,119 @@ function renderLogin(msg) {
 }
 
 async function renderApp() {
-  app.innerHTML = `<div class="wrap"><p class="muted">Loading your dashboard…</p></div>`;
+  app.innerHTML = `<div class="login"><div class="box"><p class="muted">Loading your dashboard…</p></div></div>`;
   DATA = await api('agency');
   if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
-  const brand = DATA.agency.brand_primary || '#209A9B';
-  document.documentElement.style.setProperty('--brand', brand);
-  const logo = DATA.agency.logo_url ? `<img src="${esc(DATA.agency.logo_url)}" alt="${esc(DATA.agency.name)}">` : '';
-  app.innerHTML = `
-    <header class="bar">${logo}<span class="nm">${esc(DATA.agency.name)}</span>
-      <span class="muted" style="font-weight:400"> · Updates Dashboard</span>
-      <span class="sp"></span>
-      <span class="who">${esc(SESSION.user.email)}</span>
-      <button class="ghost" id="out">Sign out</button>
-    </header>
-    <div class="wrap">
-      <div class="tabs">
-        <button data-t="email" class="${TAB==='email'?'on':''}">This week's email</button>
-        <button data-t="settings" class="${TAB==='settings'?'on':''}">Settings</button>
+  const label = TAB === 'email' ? "This week's email" : 'Settings';
+  app.innerHTML = `<div class="app">
+    <aside class="side">
+      <div class="brand"><img src="${GHL_LOGO}" alt="GHL Updates"></div>
+      ${navBtn('mail', "This week's email", 'email', false)}
+      ${navBtn('gear', 'Settings', 'settings', false)}
+      <div class="navlabel">Coming soon</div>
+      ${navBtn('doc', 'All posts', 'posts', true)}
+      ${navBtn('clock', 'Send history', 'history', true)}
+      ${navBtn('card', 'Billing', 'billing', true)}
+      <div class="foot">Signed in as ${esc(DATA.agency.name)}</div>
+    </aside>
+    <div class="main">
+      <div class="top">
+        <div class="crumb">${esc(DATA.agency.name)} <b>· ${esc(label)}</b></div>
+        <div class="sp"></div>
+        <div class="acct"><span class="av">${esc(initials(SESSION.user.email))}</span>${esc(SESSION.user.email)}</div>
       </div>
-      <div id="view"></div>
-    </div>`;
-  document.getElementById('out').onclick = () => sb.auth.signOut();
-  app.querySelectorAll('.tabs button').forEach((b) => b.onclick = () => { TAB = b.dataset.t; renderApp(); });
+      <div class="content" id="view"></div>
+    </div>
+  </div>`;
+  app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { TAB = b.dataset.tab; renderApp(); });
   if (TAB === 'email') renderEmail(); else renderSettings();
 }
 
 async function renderEmail() {
   const view = document.getElementById('view');
-  view.innerHTML = `<p class="muted">Loading posts…</p>`;
+  view.innerHTML = `<p class="muted">Loading…</p>`;
   const [{ posts }, prev] = await Promise.all([api('posts'), api('preview')]);
   const published = (posts || []).filter((p) => p.status === 'published');
   const others = (posts || []).filter((p) => p.status !== 'published');
+  const sched = scheduleLabel(DATA.settings || {});
 
-  const kpis = `<div class="kpis">
-    <div class="stat"><b>${prev.post_count ?? 0}</b>in this email</div>
-    <div class="stat"><b>${prev.recipient_count ?? '—'}</b>recipients</div>
-    <div class="stat"><b>${published.length}</b>published</div>
+  const postRow = (p) => `<div class="post ${p.status==='published'&&p.in_digest?'sel':''}" data-id="${p.id}">
+    ${p.status === 'published' ? `<label class="chk"><input type="checkbox" class="dig" ${p.in_digest?'checked':''}><span class="box"></span></label>` : '<span style="width:20px;flex:none"></span>'}
+    <div class="pbody">
+      <div class="tags"><span class="pill ${p.status}">${p.status}</span>${(p.categories||[]).slice(0,1).map((c)=>`<span class="pill cat">${esc(c)}</span>`).join('')}</div>
+      <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description||'')}</div>
+    </div>
+    ${p.status === 'published' ? '<button class="mini hold">Unpublish</button>' : '<button class="mini go pub">Publish</button>'}
   </div>`;
 
-  const postRow = (p) => `<div class="card post" data-id="${p.id}">
-    <div class="body">
-      <span class="pill ${p.status}">${p.status}</span>
-      <h3>${esc(p.title)}</h3>
-      <p>${esc(p.description || '')}</p>
+  view.innerHTML = `
+    <div class="head">
+      <div><h1>This week's email</h1><p>Choose what goes out, preview it live, then send.</p></div>
+      <div class="sp"></div>
+      <div class="sched">Scheduled <b>${esc(sched)}</b></div>
+      <button class="btn" id="sendnow">Send now</button>
     </div>
-    <div class="acts">
-      ${p.status === 'published'
-        ? `<label class="chk"><input type="checkbox" class="dig" ${p.in_digest ? 'checked' : ''}> In email</label>
-           <button class="ghost hold">Unpublish</button>`
-        : `<button class="primary pub">Publish</button>`}
+    <div class="kpis">
+      <div class="kpi"><b>${prev.post_count ?? 0}</b><span>in this email</span></div>
+      <div class="kpi"><b>${prev.recipient_count ?? '—'}</b><span>recipients</span></div>
+      <div class="kpi"><b>${published.length}</b><span>published</span></div>
     </div>
-  </div>`;
-
-  view.innerHTML = `${kpis}
     <div class="builder">
-      <div class="col-list">
-        <h2 class="sec">Published — tick to include</h2>
+      <div>
+        <div class="sec">Published — tick to include</div>
+        <div class="sechint">Your posts, ready to send.</div>
         ${published.length ? published.map(postRow).join('') : '<p class="muted">Nothing published yet.</p>'}
-        ${others.length ? `<h2 class="sec" style="margin-top:24px">Drafts &amp; flagged</h2>${others.map(postRow).join('')}` : ''}
+        ${others.length ? `<div class="sec" style="margin-top:22px">Drafts &amp; flagged</div><div class="sechint">Not on the page or in the email yet.</div>${others.map(postRow).join('')}` : ''}
       </div>
-      <div class="col-preview">
-        <h2 class="sec">Preview</h2>
-        <div class="card"><div class="muted" style="margin-bottom:10px">Subject: <b>${esc(prev.subject || '')}</b></div>
-          <iframe class="preview" srcdoc="${esc(prev.html || '<p style=&quot;padding:20px&quot;>No posts selected.</p>')}"></iframe>
+      <div class="pvwrap">
+        <div class="sec">Live preview</div>
+        <div class="sechint">Shown in <b>${esc(DATA.agency.name)}'s</b> brand — exactly what members receive.</div>
+        <div class="frame">
+          <div class="bar"><i></i><i></i><i></i><span class="subj">Subject: <b>${esc(prev.subject || '')}</b></span></div>
+          <iframe srcdoc="${esc(prev.html || '<p style=&quot;padding:24px;font-family:sans-serif;color:#888&quot;>No posts selected.</p>')}"></iframe>
         </div>
       </div>
     </div>`;
 
   view.querySelectorAll('.post').forEach((row) => {
     const id = row.dataset.id;
-    const dig = row.querySelector('.dig');
-    if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); renderEmail(); };
+    const dig = row.querySelector('.dig'); if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); renderEmail(); };
     const pub = row.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderEmail(); };
     const hold = row.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderEmail(); };
   });
+  document.getElementById('sendnow').onclick = () => alert('Send now is coming next — the weekly send currently runs through the pipeline. This button will trigger a manual drip send.');
 }
 
 async function renderSettings() {
   const view = document.getElementById('view');
   const s = DATA.settings || {};
   const rate = s.digest_rate || {};
-  const dayOpts = DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('');
-  const hourOpts = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour === h ? 'selected' : ''}>${String(h).padStart(2,'0')}:00</option>`).join('');
-  const perOpts = ['minute','hour','day'].map((p) => `<option value="${p}" ${rate.period === p ? 'selected' : ''}>per ${p}</option>`).join('');
+  const dayOpts = DAYS.map((d, i) => `<option value="${i}" ${s.digest_day===i?'selected':''}>${d}</option>`).join('');
+  const hourOpts = Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.digest_hour===h?'selected':''}>${String(h).padStart(2,'0')}:00</option>`).join('');
+  const perOpts = ['minute','hour','day'].map((p) => `<option value="${p}" ${rate.period===p?'selected':''}>per ${p}</option>`).join('');
   const tz = s.digest_timezone || 'Australia/Brisbane';
   const tzList = TZS.includes(tz) ? TZS : [tz, ...TZS];
-  const tzOpts = tzList.map((z) => `<option value="${esc(z)}" ${z === tz ? 'selected' : ''}>${esc(z)}</option>`).join('');
+  const tzOpts = tzList.map((z) => `<option value="${esc(z)}" ${z===tz?'selected':''}>${esc(z)}</option>`).join('');
   view.innerHTML = `
-    <div class="card">
-      <h2 class="sec">Send schedule</h2>
+    <div class="head"><div><h1>Settings</h1><p>How and when your weekly email goes out.</p></div></div>
+    <div class="scard"><h2>Send schedule</h2>
       <div class="row"><label>Day</label><select id="day">${dayOpts}</select>
         <label style="min-width:auto">Time</label><select id="hour">${hourOpts}</select></div>
       <div class="row"><label>Timezone</label><select id="tz" style="min-width:220px">${tzOpts}</select></div>
-      <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled !== false ? 'checked' : ''}></div>
+      <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled!==false?'checked':''}></div>
     </div>
-    <div class="card">
-      <h2 class="sec">Send rate (drip)</h2>
-      <div class="row"><label>Send</label>
-        <input type="number" id="rq" value="${rate.qty != null ? rate.qty : ''}" min="1" placeholder="e.g. 25" style="min-width:90px"> emails
-        <select id="rp">${perOpts}</select></div>
-      <p class="muted">The exact pace your emails go out. Choose what suits your list and your sending reputation.</p>
+    <div class="scard"><h2>Send rate</h2>
+      <div class="row"><label>Send</label><input type="number" id="rq" value="${rate.qty!=null?rate.qty:''}" min="1" placeholder="e.g. 25" style="min-width:90px"> emails <select id="rp">${perOpts}</select></div>
+      <p class="muted">The exact pace your emails go out. Choose what suits your list and sending reputation.</p>
     </div>
-    <div class="card">
-      <h2 class="sec">Links</h2>
-      <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url || '')}" style="min-width:320px"></div>
-      <p class="muted">Where the email's bottom button points (your full updates page).</p>
+    <div class="scard"><h2>Links</h2>
+      <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:320px"></div>
+      <p class="muted">Where the email's bottom button points — your full updates page.</p>
     </div>
-    <div class="card">
-      <h2 class="sec">Recipients</h2>
-      <p class="muted">${s.segment_status_count || 0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
+    <div class="scard"><h2>Recipients</h2>
+      <p class="muted">${s.segment_status_count||0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
     </div>
-    <button class="primary" id="save">Save settings</button>
+    <button class="btn" id="save">Save settings</button>
     <span class="muted" id="saved" style="margin-left:12px"></span>`;
   document.getElementById('save').onclick = async () => {
     const body = {
