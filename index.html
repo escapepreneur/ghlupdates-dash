@@ -103,6 +103,29 @@
   input[type=text]:focus,input[type=number]:focus,select:focus{outline:2px solid rgba(59,138,240,.4);border-color:var(--blue)}
   input[type=checkbox]{width:18px;height:18px;accent-color:var(--blue)}
   .muted{color:var(--muted);font-size:13px}
+  .fbar{display:flex;gap:8px;margin-bottom:18px;flex-wrap:wrap}
+  .fchip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:500;color:var(--muted)}
+  .fchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
+  .fchip b{font-weight:700}
+  .pacts{flex:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end;min-width:128px}
+  .inm{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+  .req{display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .vote{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:52px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);padding:8px 0}
+  .vote span{font-size:12px;line-height:1}.vote b{font-size:15px;color:var(--ink)}
+  .vote.on{border-color:var(--blue);background:#eef5fe;color:var(--blue)}.vote.on b{color:var(--blue)}
+  .rbody{flex:1;min-width:0}
+  .rt{font-size:15px;font-weight:600;line-height:1.3}
+  .rd{font-size:13px;color:var(--muted);line-height:1.5;margin-top:3px}
+  .rmeta{display:flex;align-items:center;gap:8px;margin-top:9px;flex-wrap:wrap}
+  .rstat{font-size:12px;padding:5px 8px;min-width:auto}
+  .cl{background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 15px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  textarea{font:inherit}
+  .pill.st-open{background:#eef1f4;color:#5a6672}
+  .pill.st-under_review{background:#fff3e0;color:#8a5a00}
+  .pill.st-planned{background:#e9f0fe;color:#2f6fd0}
+  .pill.st-in_progress{background:#e7f0ff;color:#2f6fd0}
+  .pill.st-shipped{background:var(--ok-bg);color:var(--ok)}
+  .pill.st-declined{background:#f3f4f6;color:#9aa0a6}
   @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.builder{grid-template-columns:1fr}.pvwrap{position:static}.kpis{grid-template-columns:1fr}}
 </style>
 </head>
@@ -117,7 +140,7 @@ const DASH = SUPABASE_URL + '/functions/v1/dash';
 const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
-let SESSION = null, DATA = null, TAB = 'email';
+let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'all';
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -138,7 +161,10 @@ const NAV_ICONS = {
   doc: '<path d="M6 3h6l4 4v11a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1z"/><path d="M12 3v4h4"/>',
   clock: '<circle cx="11" cy="11" r="8"/><path d="M11 6.5V11l3 2"/>',
   card: '<rect x="3" y="6" width="16" height="11" rx="2"/><path d="M3 9.5h16"/>',
+  spark: '<path d="M11 2.5c.6 3.5 2 4.9 5.5 5.5-3.5.6-4.9 2-5.5 5.5-.6-3.5-2-4.9-5.5-5.5 3.5-.6 4.9-2 5.5-5.5z"/><path d="M17 14c.3 1.7 1 2.4 2.7 2.7-1.7.3-2.4 1-2.7 2.7-.3-1.7-1-2.4-2.7-2.7 1.7-.3 2.4-1 2.7-2.7z"/>',
+  chat: '<path d="M4 5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',
 };
+const LABELS = { posts: 'Posts', email: "This week's email", requests: 'Requests', settings: 'Settings' };
 const navBtn = (icon, label, tab, soon) => `<button class="nav${TAB===tab?' on':''}${soon?' soon':''}" ${soon?'':`data-tab="${tab}"`}>
   <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${NAV_ICONS[icon]}</svg>
   <span>${label}</span>${soon?'<em>soon</em>':''}</button>`;
@@ -170,14 +196,16 @@ async function renderApp() {
   app.innerHTML = `<div class="login"><div class="box"><p class="muted">Loading your dashboard…</p></div></div>`;
   DATA = await api('agency');
   if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
-  const label = TAB === 'email' ? "This week's email" : 'Settings';
+  const label = LABELS[TAB] || '';
   app.innerHTML = `<div class="app">
     <aside class="side">
       <div class="brand"><img src="${GHL_LOGO}" alt="GHL Updates"></div>
+      ${navBtn('doc', 'Posts', 'posts', false)}
       ${navBtn('mail', "This week's email", 'email', false)}
+      ${navBtn('spark', 'Requests', 'requests', false)}
       ${navBtn('gear', 'Settings', 'settings', false)}
       <div class="navlabel">Coming soon</div>
-      ${navBtn('doc', 'All posts', 'posts', true)}
+      ${navBtn('chat', 'Community', 'community', true)}
       ${navBtn('clock', 'Send history', 'history', true)}
       ${navBtn('card', 'Billing', 'billing', true)}
       <div class="foot">Signed in as ${esc(DATA.agency.name)}</div>
@@ -192,29 +220,96 @@ async function renderApp() {
     </div>
   </div>`;
   app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { TAB = b.dataset.tab; renderApp(); });
-  if (TAB === 'email') renderEmail(); else renderSettings();
+  if (TAB === 'posts') renderPosts();
+  else if (TAB === 'email') renderEmail();
+  else if (TAB === 'requests') renderRequests();
+  else renderSettings();
+}
+
+async function renderPosts() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<p class="muted">Loading…</p>`;
+  const { posts } = await api('posts');
+  const all = posts || [];
+  const counts = { all: all.length, needs: all.filter((p) => p.status !== 'published').length, published: all.filter((p) => p.status === 'published').length };
+  const show = POSTFILTER === 'needs' ? all.filter((p) => p.status !== 'published') : POSTFILTER === 'published' ? all.filter((p) => p.status === 'published') : all;
+  const chip = (k, l, n) => `<button class="fchip${POSTFILTER === k ? ' on' : ''}" data-f="${k}">${l} <b>${n}</b></button>`;
+  const row = (p) => `<div class="post" data-id="${p.id}">
+    <div class="pbody">
+      <div class="tags"><span class="pill ${p.status}">${p.status}</span>${(p.categories || []).slice(0, 1).map((c) => `<span class="pill cat">${esc(c)}</span>`).join('')}${p.flag ? '<span class="pill flagged">flagged</span>' : ''}</div>
+      <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div>
+      ${p.flag ? `<div style="font-size:12px;color:#c0392b;margin-top:6px">${esc(p.flag)}</div>` : ''}
+    </div>
+    <div class="pacts">
+      ${p.status === 'published'
+        ? `<label class="inm"><input type="checkbox" class="dig" ${p.in_digest ? 'checked' : ''}> In email</label><button class="mini hold">Unpublish</button>`
+        : '<button class="mini go pub">Publish</button>'}
+    </div>
+  </div>`;
+  view.innerHTML = `
+    <div class="head"><div><h1>Posts</h1><p>Review, publish, and choose where each update goes.</p></div></div>
+    <div class="fbar">${chip('all', 'All', counts.all)}${chip('needs', 'Needs review', counts.needs)}${chip('published', 'Published', counts.published)}</div>
+    ${show.length ? show.map(row).join('') : '<p class="muted">No posts here yet.</p>'}`;
+  view.querySelectorAll('.fchip').forEach((b) => b.onclick = () => { POSTFILTER = b.dataset.f; renderPosts(); });
+  view.querySelectorAll('.post').forEach((r) => {
+    const id = r.dataset.id;
+    const dig = r.querySelector('.dig'); if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); };
+    const pub = r.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderPosts(); };
+    const hold = r.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderPosts(); };
+  });
+}
+
+async function renderRequests() {
+  const view = document.getElementById('view');
+  view.innerHTML = `<p class="muted">Loading…</p>`;
+  const { requests, changelog } = await api('requests');
+  const STATUS = { open: 'Open', under_review: 'Under review', planned: 'Planned', in_progress: 'In progress', shipped: 'Shipped', declined: 'Declined' };
+  const statusSel = (p) => `<select class="rstat" data-id="${p.id}">${Object.keys(STATUS).map((k) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${STATUS[k]}</option>`).join('')}</select>`;
+  const reqRow = (p) => `<div class="req">
+    <button class="vote${p.voted ? ' on' : ''}" data-id="${p.id}" data-on="${p.voted ? '0' : '1'}"><span>&#9650;</span><b>${p.vote_count}</b></button>
+    <div class="rbody"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="rmeta"><span class="pill st-${p.status}">${STATUS[p.status] || p.status}</span>${statusSel(p)}</div></div>
+  </div>`;
+  const clRow = (p) => `<div class="cl"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="muted" style="font-size:11.5px;margin-top:4px">${(p.updated_at || '').slice(0, 10)}</div></div>`;
+  view.innerHTML = `
+    <div class="head"><div><h1>Requests</h1><p>Tell us what to build next — upvote what matters to you.</p></div></div>
+    <div class="builder">
+      <div>
+        <div class="scard"><h2>Suggest a feature</h2>
+          <input type="text" id="rtitle" placeholder="Short title" style="width:100%;margin-bottom:8px">
+          <textarea id="rbody" placeholder="What would it do? (optional)" style="width:100%;min-height:68px;padding:9px 11px;border:1px solid var(--line);border-radius:9px"></textarea>
+          <div style="margin-top:10px"><button class="btn" id="radd">Submit request</button><span class="muted" id="rmsg" style="margin-left:10px"></span></div>
+        </div>
+        <div class="sec">Requests</div><div class="sechint">Sorted by votes.</div>
+        ${requests.length ? requests.map(reqRow).join('') : '<p class="muted">No requests yet — add the first.</p>'}
+      </div>
+      <div class="pvwrap">
+        <div class="sec">Latest updates</div><div class="sechint">Recently shipped.</div>
+        ${changelog.length ? changelog.map(clRow).join('') : '<p class="muted">Nothing shipped yet.</p>'}
+      </div>
+    </div>`;
+  document.getElementById('radd').onclick = async () => {
+    const title = document.getElementById('rtitle').value.trim(); if (!title) return;
+    document.getElementById('rmsg').textContent = 'Saving…';
+    await api('request-add', { title, body: document.getElementById('rbody').value.trim() }); renderRequests();
+  };
+  view.querySelectorAll('.vote').forEach((b) => b.onclick = async () => { await api('request-vote', { id: b.dataset.id, on: b.dataset.on === '1' }); renderRequests(); });
+  view.querySelectorAll('.rstat').forEach((s) => s.onchange = async () => { await api('request-status', { id: s.dataset.id, status: s.value }); renderRequests(); });
 }
 
 async function renderEmail() {
   const view = document.getElementById('view');
   view.innerHTML = `<p class="muted">Loading…</p>`;
   const [{ posts }, prev] = await Promise.all([api('posts'), api('preview')]);
-  const published = (posts || []).filter((p) => p.status === 'published');
-  const others = (posts || []).filter((p) => p.status !== 'published');
+  const included = (posts || []).filter((p) => p.status === 'published' && p.in_digest);
+  const publishedCount = (posts || []).filter((p) => p.status === 'published').length;
   const sched = scheduleLabel(DATA.settings || {});
-
-  const postRow = (p) => `<div class="post ${p.status==='published'&&p.in_digest?'sel':''}" data-id="${p.id}">
-    ${p.status === 'published' ? `<label class="chk"><input type="checkbox" class="dig" ${p.in_digest?'checked':''}><span class="box"></span></label>` : '<span style="width:20px;flex:none"></span>'}
-    <div class="pbody">
-      <div class="tags"><span class="pill ${p.status}">${p.status}</span>${(p.categories||[]).slice(0,1).map((c)=>`<span class="pill cat">${esc(c)}</span>`).join('')}</div>
-      <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description||'')}</div>
-    </div>
-    ${p.status === 'published' ? '<button class="mini hold">Unpublish</button>' : '<button class="mini go pub">Publish</button>'}
-  </div>`;
+  const itemRow = (p) => `<div class="post"><div class="pbody">
+    <div class="tags"><span class="pill published">included</span>${(p.categories||[]).slice(0,1).map((c)=>`<span class="pill cat">${esc(c)}</span>`).join('')}</div>
+    <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description||'')}</div></div></div>`;
 
   view.innerHTML = `
     <div class="head">
-      <div><h1>This week's email</h1><p>Choose what goes out, preview it live, then send.</p></div>
+      <div><h1>This week's email</h1><p>Preview what goes out, then send.</p></div>
       <div class="sp"></div>
       <div class="sched">Scheduled <b>${esc(sched)}</b></div>
       <button class="btn" id="sendnow">Send now</button>
@@ -222,14 +317,13 @@ async function renderEmail() {
     <div class="kpis">
       <div class="kpi"><b>${prev.post_count ?? 0}</b><span>in this email</span></div>
       <div class="kpi"><b>${prev.recipient_count ?? '—'}</b><span>recipients</span></div>
-      <div class="kpi"><b>${published.length}</b><span>published</span></div>
+      <div class="kpi"><b>${publishedCount}</b><span>published</span></div>
     </div>
     <div class="builder">
       <div>
-        <div class="sec">Published — tick to include</div>
-        <div class="sechint">Your posts, ready to send.</div>
-        ${published.length ? published.map(postRow).join('') : '<p class="muted">Nothing published yet.</p>'}
-        ${others.length ? `<div class="sec" style="margin-top:22px">Drafts &amp; flagged</div><div class="sechint">Not on the page or in the email yet.</div>${others.map(postRow).join('')}` : ''}
+        <div class="sec">In this email</div>
+        <div class="sechint">Choose these on the <b style="color:var(--blue)">Posts</b> page.</div>
+        ${included.length ? included.map(itemRow).join('') : '<p class="muted">No posts selected. Tick "In email" on a published post on the Posts page.</p>'}
       </div>
       <div class="pvwrap">
         <div class="sec">Live preview</div>
@@ -240,13 +334,6 @@ async function renderEmail() {
         </div>
       </div>
     </div>`;
-
-  view.querySelectorAll('.post').forEach((row) => {
-    const id = row.dataset.id;
-    const dig = row.querySelector('.dig'); if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); renderEmail(); };
-    const pub = row.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderEmail(); };
-    const hold = row.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderEmail(); };
-  });
   document.getElementById('sendnow').onclick = () => alert('Send now is coming next — the weekly send currently runs through the pipeline. This button will trigger a manual drip send.');
 }
 
