@@ -266,7 +266,7 @@ async function renderApp() {
       <div class="content" id="view"></div>
     </div>
   </div>`;
-  app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { TAB = b.dataset.tab; renderApp(); });
+  app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { if (b.dataset.tab === TAB) return; TAB = b.dataset.tab; renderApp(); });
   if (TAB === 'posts') renderPosts();
   else if (TAB === 'email') renderEmail();
   else if (TAB === 'requests') renderRequests();
