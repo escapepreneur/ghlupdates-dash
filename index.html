@@ -172,6 +172,16 @@
   .rev:last-child{border-bottom:0}.rev .k{color:var(--muted)}.rev .v{font-weight:600;text-align:right}
   .err{color:#c0392b;font-size:13px;margin-top:10px}
   .swatch{width:40px;height:40px;border-radius:9px;border:1px solid var(--line);padding:0;cursor:pointer;background:none}
+  .modal{position:fixed;inset:0;background:rgba(16,24,32,.5);display:flex;align-items:flex-start;justify-content:center;z-index:50;padding:34px 20px;overflow:auto}
+  .modal .sheet{background:#fff;border-radius:16px;max-width:720px;width:100%;padding:24px 26px;box-shadow:0 24px 70px rgba(0,0,0,.32)}
+  .modal h2{font-size:18px;margin:0 0 4px}
+  .modal .msub{color:var(--muted);font-size:13px;margin:0 0 18px}
+  .modal label{display:block;font-size:13px;font-weight:600;margin:14px 0 6px}
+  .modal input[type=text],.modal textarea{width:100%}
+  .ed-body{border:1px solid var(--line);border-radius:10px;padding:14px 16px;min-height:220px;max-height:50vh;overflow:auto;font-size:14px;line-height:1.65;outline:none;background:#fff}
+  .ed-body:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,138,240,.15)}
+  .ed-body h2{font-size:17px;margin:16px 0 8px}.ed-body p{margin:0 0 12px}.ed-body ul,.ed-body ol{margin:0 0 12px;padding-left:22px}
+  .mfoot{display:flex;gap:10px;align-items:center;margin-top:20px}.mfoot .sp{flex:1}
   @media(max-width:900px){.app{grid-template-columns:1fr}.side{display:none}.builder{grid-template-columns:1fr}.pvwrap{position:static}.kpis{grid-template-columns:1fr}}
 </style>
 </head>
@@ -444,6 +454,7 @@ async function renderPosts() {
       ${p.flag ? `<div style="font-size:12px;color:#c0392b;margin-top:6px">${esc(p.flag)}</div>` : ''}
     </div>
     <div class="pacts">
+      <button class="mini edit">Edit</button>
       ${p.status === 'published'
         ? `<label class="inm"><input type="checkbox" class="dig" ${p.in_digest ? 'checked' : ''}> In email</label><button class="mini hold">Unpublish</button>`
         : '<button class="mini go pub">Publish</button>'}
@@ -459,7 +470,33 @@ async function renderPosts() {
     const dig = r.querySelector('.dig'); if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); };
     const pub = r.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderPosts(); };
     const hold = r.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderPosts(); };
+    const ed = r.querySelector('.edit'); if (ed) ed.onclick = () => editPost(id);
   });
+}
+
+async function editPost(id) {
+  const { post } = await api('post', { id });
+  if (!post) return;
+  const m = document.createElement('div');
+  m.className = 'modal';
+  m.innerHTML = `<div class="sheet">
+    <h2>Edit post</h2><p class="msub">Your changes show on your updates page and in the weekly email.</p>
+    <label>Title</label><input type="text" id="etitle" value="${esc(post.title || '')}">
+    <label>Short description</label><textarea id="edesc" style="min-height:62px">${esc(post.description || '')}</textarea>
+    <label>Body</label><div class="ed-body" id="ebody" contenteditable="true"></div>
+    <div class="mfoot"><button class="lnk" id="ecancel">Cancel</button><div class="sp"></div><span class="muted" id="emsg"></span><button class="btn" id="esave">Save changes</button></div>
+  </div>`;
+  document.body.appendChild(m);
+  document.getElementById('ebody').innerHTML = post.body_html || '';
+  const close = () => m.remove();
+  document.getElementById('ecancel').onclick = close;
+  m.onclick = (e) => { if (e.target === m) close(); };
+  document.getElementById('esave').onclick = async () => {
+    const btn = document.getElementById('esave'); btn.disabled = true;
+    document.getElementById('emsg').textContent = 'Saving…';
+    await api('edit-post', { id, title: document.getElementById('etitle').value.trim(), description: document.getElementById('edesc').value.trim(), body_html: document.getElementById('ebody').innerHTML });
+    close(); renderPosts();
+  };
 }
 
 async function renderRequests() {
