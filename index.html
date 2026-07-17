@@ -98,6 +98,12 @@
   .mini{flex:none;align-self:flex-start;font-size:12.5px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 11px}
   .mini:hover{border-color:#cfd6dc;color:var(--ink)}
   .mini.go{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:600}
+  .mini.emailon{background:var(--ok-bg);border-color:#bfe4cf;color:var(--ok);font-weight:600}
+  .mini.emailon:hover{border-color:#bfe4cf;color:var(--ok)}
+  .mini.emailoff{background:#fdeceb;border-color:#f6d4d0;color:#c0392b;font-weight:600}
+  .mini.emailoff:hover{border-color:#f6d4d0;color:#c0392b}
+  .mini.sentflag{cursor:default}
+  .mini.sentflag:hover{border-color:var(--line);color:var(--muted)}
   .pvwrap{position:sticky;top:18px}
   iframe.preview{width:100%;height:560px;border:1px solid var(--line);border-radius:12px;background:#fff}
   .frame{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 8px 26px rgba(16,40,38,.08)}
@@ -121,7 +127,6 @@
   .fchip b{font-weight:700}
   .pacts{flex:none;display:flex;flex-direction:column;gap:8px;align-items:stretch;width:118px}
   .pacts .mini{width:100%;text-align:center}
-  .inm{display:flex;align-items:center;justify-content:flex-end;gap:7px;font-size:12.5px;font-weight:600}
   .req{display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .vote{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:52px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);padding:8px 0}
   .vote span{font-size:12px;line-height:1}.vote b{font-size:15px;color:var(--ink)}
@@ -200,7 +205,7 @@ const DASH = SUPABASE_URL + '/functions/v1/dash';
 const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
-let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'all', SKIP_ONBOARD = false, WIZ = { step: 0 };
+let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'needs', SKIP_ONBOARD = false, WIZ = { step: 0 };
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -453,7 +458,12 @@ async function renderPosts() {
   const counts = { all: all.length, needs: all.filter((p) => p.status !== 'published').length, published: all.filter((p) => p.status === 'published').length };
   const show = POSTFILTER === 'needs' ? all.filter((p) => p.status !== 'published') : POSTFILTER === 'published' ? all.filter((p) => p.status === 'published') : all;
   const chip = (k, l, n) => `<button class="fchip${POSTFILTER === k ? ' on' : ''}" data-f="${k}">${l} <b>${n}</b></button>`;
-  const row = (p) => `<div class="post" data-id="${p.id}">
+  const row = (p) => {
+    const sent = p.status === 'published' && !!p.emailed_at;
+    const emailBtn = sent
+      ? `<div class="mini sentflag">Already sent</div>`
+      : `<button class="mini dig${p.in_digest ? ' emailon' : ' emailoff'}" data-on="${p.in_digest ? '0' : '1'}" title="${p.in_digest ? 'Click to leave out of the email' : 'Click to include in the email'}">${p.in_digest ? 'In email' : 'Not in email'}</button>`;
+    return `<div class="post" data-id="${p.id}">
     <div class="pbody">
       <div class="tags"><span class="pill ${p.status}">${p.status}</span>${(p.categories || []).slice(0, 1).map((c) => `<span class="pill cat">${esc(c)}</span>`).join('')}${p.flag ? '<span class="pill flagged">flagged</span>' : ''}</div>
       <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div>
@@ -461,19 +471,19 @@ async function renderPosts() {
     </div>
     <div class="pacts">
       <button class="mini edit">Edit</button>
-      ${p.status === 'published'
-        ? `<label class="inm"><input type="checkbox" class="dig" ${p.in_digest ? 'checked' : ''}> In email</label><button class="mini hold">Unpublish</button>`
-        : '<button class="mini go pub">Publish</button>'}
+      ${emailBtn}
+      ${p.status === 'published' ? '<button class="mini hold">Unpublish</button>' : '<button class="mini go pub">Publish</button>'}
     </div>
   </div>`;
+  };
   view.innerHTML = `
     <div class="head"><div><h1>Posts</h1><p>Review, publish, and choose where each update goes.</p></div></div>
-    <div class="fbar">${chip('all', 'All', counts.all)}${chip('needs', 'Needs review', counts.needs)}${chip('published', 'Published', counts.published)}</div>
+    <div class="fbar">${chip('needs', 'Needs review', counts.needs)}${chip('published', 'Published', counts.published)}${chip('all', 'All', counts.all)}</div>
     ${show.length ? show.map(row).join('') : '<p class="muted">No posts here yet.</p>'}`;
   view.querySelectorAll('.fchip').forEach((b) => b.onclick = () => { POSTFILTER = b.dataset.f; renderPosts(); });
   view.querySelectorAll('.post').forEach((r) => {
     const id = r.dataset.id;
-    const dig = r.querySelector('.dig'); if (dig) dig.onchange = async () => { await api('toggle-digest', { id, in_digest: dig.checked }); };
+    const dig = r.querySelector('.dig'); if (dig) dig.onclick = async () => { dig.disabled = true; await api('toggle-digest', { id, in_digest: dig.dataset.on === '1' }); renderPosts(); };
     const pub = r.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderPosts(); };
     const hold = r.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderPosts(); };
     const ed = r.querySelector('.edit'); if (ed) ed.onclick = () => editPost(id);
