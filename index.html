@@ -47,7 +47,8 @@
   .nav.soon{opacity:.5;cursor:default}
   .nav.soon:hover{background:transparent}
   .nav em{margin-left:auto;font-style:normal;font-size:9px;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.12);padding:2px 7px;border-radius:99px}
-  .side .foot{margin-top:auto;font-size:11px;color:#6b7682;padding:8px}
+  .navbottom{margin-top:auto;display:flex;flex-direction:column;gap:5px}
+  .side .foot{font-size:11px;color:#6b7682;padding:8px;margin-top:8px}
   .main{display:flex;flex-direction:column;min-width:0}
   .top{display:flex;align-items:center;gap:12px;padding:13px 28px;background:#fff;border-bottom:1px solid var(--line)}
   .crumb{font-size:13px;color:var(--muted)}.crumb b{color:var(--ink);font-weight:600}
@@ -61,6 +62,8 @@
   .head .sp{flex:1}
   .sched{display:inline-flex;align-items:center;gap:7px;height:40px;font-size:13px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:0 14px;border-radius:10px}
   .sched b{color:var(--ink);font-weight:600}
+  .schedit{margin-left:2px;border:0;background:none;color:var(--blue);font-weight:600;font-size:12.5px;cursor:pointer;padding:0}
+  .schedit:hover{text-decoration:underline}
   .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .kpi b{display:block;font-size:28px;font-weight:700;color:var(--blue);line-height:1.05}
@@ -116,8 +119,9 @@
   .fchip{border:1px solid var(--line);background:#fff;border-radius:99px;padding:7px 14px;font-size:13px;font-weight:500;color:var(--muted)}
   .fchip.on{background:var(--blue);border-color:var(--blue);color:#fff}
   .fchip b{font-weight:700}
-  .pacts{flex:none;display:flex;flex-direction:column;gap:8px;align-items:flex-end;min-width:128px}
-  .inm{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:600}
+  .pacts{flex:none;display:flex;flex-direction:column;gap:8px;align-items:stretch;width:118px}
+  .pacts .mini{width:100%;text-align:center}
+  .inm{display:flex;align-items:center;justify-content:flex-end;gap:7px;font-size:12.5px;font-weight:600}
   .req{display:flex;gap:14px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin-bottom:10px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .vote{flex:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:52px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--muted);padding:8px 0}
   .vote span{font-size:12px;line-height:1}.vote b{font-size:15px;color:var(--ink)}
@@ -186,7 +190,7 @@
 </style>
 </head>
 <body>
-<div id="app"><div class="login"><div class="box"><p class="muted">Loading…</p></div></div></div>
+<div id="app"><div class="login"><div class="box"><img src="logo.png" alt="GHL Updates" style="height:44px;margin-bottom:14px"><p class="muted">Loading…</p></div></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -249,7 +253,7 @@ function renderLogin(msg) {
 }
 
 async function renderApp() {
-  app.innerHTML = `<div class="login"><div class="box"><p class="muted">Loading your dashboard…</p></div></div>`;
+  app.innerHTML = `<div class="login"><div class="box"><img src="${GHL_LOGO}" alt="GHL Updates" style="height:44px;margin-bottom:14px"><p class="muted">Loading your dashboard…</p></div></div>`;
   DATA = await api('agency');
   if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
   if (!DATA.agency.onboarded && !SKIP_ONBOARD) { renderWizard(); return; }
@@ -259,12 +263,14 @@ async function renderApp() {
       <div class="brand"><img src="${GHL_LOGO}" alt="GHL Updates"></div>
       ${navBtn('doc', 'Posts', 'posts', false)}
       ${navBtn('mail', "This week's email", 'email', false)}
-      ${navBtn('spark', 'Requests', 'requests', false)}
       ${navBtn('gear', 'Settings', 'settings', false)}
-      <div class="navlabel">Coming soon</div>
-      ${navBtn('chat', 'Community', 'community', true)}
-      ${navBtn('clock', 'Send history', 'history', true)}
-      ${navBtn('card', 'Billing', 'billing', true)}
+      <div class="navbottom">
+        ${navBtn('spark', 'Requests', 'requests', false)}
+        <div class="navlabel">Coming soon</div>
+        ${navBtn('chat', 'Community', 'community', true)}
+        ${navBtn('clock', 'Send history', 'history', true)}
+        ${navBtn('card', 'Billing', 'billing', true)}
+      </div>
       <div class="foot">Signed in as ${esc(DATA.agency.name)}</div>
     </aside>
     <div class="main">
@@ -506,8 +512,8 @@ async function renderRequests() {
   const STATUS = { open: 'Open', under_review: 'Under review', planned: 'Planned', in_progress: 'In progress', shipped: 'Shipped', declined: 'Declined' };
   const statusSel = (p) => `<select class="rstat" data-id="${p.id}">${Object.keys(STATUS).map((k) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${STATUS[k]}</option>`).join('')}</select>`;
   const reqRow = (p) => `<div class="req">
-    <button class="vote${p.voted ? ' on' : ''}" data-id="${p.id}" data-on="${p.voted ? '0' : '1'}"><span>&#9650;</span><b>${p.vote_count}</b></button>
-    <div class="rbody"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="rmeta"><span class="pill st-${p.status}">${STATUS[p.status] || p.status}</span>${statusSel(p)}</div></div>
+    <button class="vote${p.voted ? ' on' : ''}" data-id="${p.id}" data-on="${p.voted ? '0' : '1'}" title="${p.voted ? 'Remove your upvote' : 'Upvote'}"><span>${p.voted ? '&#9660;' : '&#9650;'}</span><b>${p.vote_count}</b></button>
+    <div class="rbody"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="rmeta"><span class="pill st-${p.status}">${STATUS[p.status] || p.status}</span>${DATA.agency.is_admin ? statusSel(p) : ''}</div></div>
   </div>`;
   const clRow = (p) => `<div class="cl"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="muted" style="font-size:11.5px;margin-top:4px">${(p.updated_at || '').slice(0, 10)}</div></div>`;
   view.innerHTML = `
@@ -552,7 +558,7 @@ async function renderEmail() {
     <div class="head">
       <div><h1>This week's email</h1><p>Preview what goes out, then send.</p></div>
       <div class="sp"></div>
-      <div class="sched">Scheduled <b>${esc(sched)}</b></div>
+      <div class="sched">Scheduled <b>${esc(sched)}</b><button class="schedit" id="editsched">Edit</button></div>
       <button class="btn" id="sendnow">Send now</button>
     </div>
     ${active
@@ -578,6 +584,7 @@ async function renderEmail() {
         </div>
       </div>
     </div>`;
+  document.getElementById('editsched').onclick = () => { TAB = 'settings'; renderApp(); };
   const tog = document.getElementById('acttoggle');
   if (tog) tog.onclick = async () => {
     if (!active && !confirm(`Turn ON automatic weekly sending?\n\nYour email will then go out to your members every ${sched}.`)) return;
