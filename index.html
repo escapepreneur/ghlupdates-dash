@@ -240,6 +240,9 @@ function scheduleLabel(s) {
   return `${DAYS[s.digest_day]}s ${h12}:00 ${ap}`;
 }
 function initials(email) { return (email || '?').slice(0, 2).toUpperCase(); }
+const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+function ordinal(n) { const v = n % 100; if (v >= 11 && v <= 13) return n + 'th'; return n + ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th'); }
+function fmtSentDate(iso) { if (!iso) return ''; const d = new Date(iso); return `${ordinal(d.getDate())} of ${MONTHS[d.getMonth()]}`; }
 
 function renderLogin(msg) {
   app.innerHTML = `<div class="login"><div class="box">
@@ -461,7 +464,7 @@ async function renderPosts() {
   const row = (p) => {
     const sent = p.status === 'published' && !!p.emailed_at;
     const emailBtn = sent
-      ? `<div class="mini sentflag">Already sent</div>`
+      ? `<div class="mini sentflag" title="Sent ${esc(fmtSentDate(p.emailed_at))}">Sent ${esc(fmtSentDate(p.emailed_at))}</div>`
       : `<button class="mini dig${p.in_digest ? ' emailon' : ' emailoff'}" data-on="${p.in_digest ? '0' : '1'}" title="${p.in_digest ? 'Click to leave out of the email' : 'Click to include in the email'}">${p.in_digest ? 'In email' : 'Not in email'}</button>`;
     return `<div class="post" data-id="${p.id}">
     <div class="pbody">
