@@ -31,6 +31,8 @@
   .btn{border:0;border-radius:10px;background:var(--blue);color:#fff;font-weight:600;font-size:14px;padding:0 18px;height:40px;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(16,24,40,.06)}
   .btn:hover{background:var(--blue-h)}
   .btn.block{width:100%;justify-content:center}
+  .btn.outline{background:#fff;color:var(--blue);border:1px solid var(--line);box-shadow:none}
+  .btn.outline:hover{background:#f7f9fb}
   .btn:disabled{opacity:.55}
   .note{font-size:12.5px;color:#99a2ad;margin-top:12px;min-height:16px}
   /* app shell */
@@ -62,8 +64,6 @@
   .head .sp{flex:1}
   .sched{display:inline-flex;align-items:center;gap:7px;height:40px;font-size:13px;color:var(--muted);background:#fff;border:1px solid var(--line);padding:0 14px;border-radius:10px}
   .sched b{color:var(--ink);font-weight:600}
-  .schedit{margin-left:2px;border:0;background:none;color:var(--blue);font-weight:600;font-size:12.5px;cursor:pointer;padding:0}
-  .schedit:hover{text-decoration:underline}
   .kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:24px}
   .kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 18px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
   .kpi b{display:block;font-size:28px;font-weight:700;color:var(--blue);line-height:1.05}
@@ -452,7 +452,7 @@ function renderWizard() {
 
 async function renderPosts() {
   const view = document.getElementById('view');
-  view.innerHTML = `<p class="muted">Loading…</p>`;
+  if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
   const { posts } = await api('posts');
   const all = posts || [];
   const counts = { all: all.length, needs: all.filter((p) => p.status !== 'published').length, published: all.filter((p) => p.status === 'published').length };
@@ -480,6 +480,7 @@ async function renderPosts() {
     <div class="head"><div><h1>Posts</h1><p>Review, publish, and choose where each update goes.</p></div></div>
     <div class="fbar">${chip('needs', 'Needs review', counts.needs)}${chip('published', 'Published', counts.published)}${chip('all', 'All', counts.all)}</div>
     ${show.length ? show.map(row).join('') : '<p class="muted">No posts here yet.</p>'}`;
+  view.dataset.loaded = '1';
   view.querySelectorAll('.fchip').forEach((b) => b.onclick = () => { POSTFILTER = b.dataset.f; renderPosts(); });
   view.querySelectorAll('.post').forEach((r) => {
     const id = r.dataset.id;
@@ -517,12 +518,12 @@ async function editPost(id) {
 
 async function renderRequests() {
   const view = document.getElementById('view');
-  view.innerHTML = `<p class="muted">Loading…</p>`;
+  if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
   const { requests, changelog } = await api('requests');
   const STATUS = { open: 'Open', under_review: 'Under review', planned: 'Planned', in_progress: 'In progress', shipped: 'Shipped', declined: 'Declined' };
   const statusSel = (p) => `<select class="rstat" data-id="${p.id}">${Object.keys(STATUS).map((k) => `<option value="${k}" ${p.status === k ? 'selected' : ''}>${STATUS[k]}</option>`).join('')}</select>`;
   const reqRow = (p) => `<div class="req">
-    <button class="vote${p.voted ? ' on' : ''}" data-id="${p.id}" data-on="${p.voted ? '0' : '1'}" title="${p.voted ? 'Remove your upvote' : 'Upvote'}"><span>${p.voted ? '&#9660;' : '&#9650;'}</span><b>${p.vote_count}</b></button>
+    <button class="vote${p.voted ? ' on' : ''}" data-id="${p.id}" data-on="${p.voted ? '0' : '1'}" title="${p.voted ? 'Remove your upvote' : 'Upvote'}">${p.voted ? `<b>${p.vote_count}</b><span>&#9660;</span>` : `<span>&#9650;</span><b>${p.vote_count}</b>`}</button>
     <div class="rbody"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="rmeta"><span class="pill st-${p.status}">${STATUS[p.status] || p.status}</span>${DATA.agency.is_admin ? statusSel(p) : ''}</div></div>
   </div>`;
   const clRow = (p) => `<div class="cl"><div class="rt">${esc(p.title)}</div>${p.body ? `<div class="rd">${esc(p.body)}</div>` : ''}<div class="muted" style="font-size:11.5px;margin-top:4px">${(p.updated_at || '').slice(0, 10)}</div></div>`;
@@ -543,6 +544,7 @@ async function renderRequests() {
         ${changelog.length ? changelog.map(clRow).join('') : '<p class="muted">Nothing shipped yet.</p>'}
       </div>
     </div>`;
+  view.dataset.loaded = '1';
   document.getElementById('radd').onclick = async () => {
     const title = document.getElementById('rtitle').value.trim(); if (!title) return;
     document.getElementById('rmsg').textContent = 'Saving…';
@@ -554,7 +556,7 @@ async function renderRequests() {
 
 async function renderEmail() {
   const view = document.getElementById('view');
-  view.innerHTML = `<p class="muted">Loading…</p>`;
+  if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
   const [{ posts }, prev] = await Promise.all([api('posts'), api('preview')]);
   const included = (posts || []).filter((p) => p.status === 'published' && p.in_digest);
   const publishedCount = (posts || []).filter((p) => p.status === 'published').length;
@@ -568,7 +570,8 @@ async function renderEmail() {
     <div class="head">
       <div><h1>This week's email</h1><p>Preview what goes out, then send.</p></div>
       <div class="sp"></div>
-      <div class="sched">Scheduled <b>${esc(sched)}</b><button class="schedit" id="editsched">Edit</button></div>
+      <div class="sched">Scheduled <b>${esc(sched)}</b></div>
+      <button class="btn outline" id="editsched">Edit schedule</button>
       <button class="btn" id="sendnow">Send now</button>
     </div>
     ${active
@@ -594,6 +597,7 @@ async function renderEmail() {
         </div>
       </div>
     </div>`;
+  view.dataset.loaded = '1';
   document.getElementById('editsched').onclick = () => { TAB = 'settings'; renderApp(); };
   const tog = document.getElementById('acttoggle');
   if (tog) tog.onclick = async () => {
@@ -623,22 +627,28 @@ async function renderSettings() {
   const tzOpts = tzList.map((z) => `<option value="${esc(z)}" ${z===tz?'selected':''}>${esc(z)}</option>`).join('');
   view.innerHTML = `
     <div class="head"><div><h1>Settings</h1><p>How and when your weekly email goes out.</p></div></div>
-    <div class="scard"><h2>Send schedule</h2>
-      <div class="row"><label>Day</label><select id="day">${dayOpts}</select>
-        <label style="min-width:auto">Time</label><select id="hour">${hourOpts}</select></div>
-      <div class="row"><label>Timezone</label><select id="tz" style="min-width:220px">${tzOpts}</select></div>
-      <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled!==false?'checked':''}></div>
-    </div>
-    <div class="scard"><h2>Send rate</h2>
-      <div class="row"><label>Send</label><input type="number" id="rq" value="${rate.qty!=null?rate.qty:''}" min="1" placeholder="e.g. 25" style="min-width:90px"> emails <select id="rp">${perOpts}</select></div>
-      <p class="muted">The exact pace your emails go out. Choose what suits your list and sending reputation.</p>
-    </div>
-    <div class="scard"><h2>Links</h2>
-      <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:320px"></div>
-      <p class="muted">Where the email's bottom button points — your full updates page.</p>
-    </div>
-    <div class="scard"><h2>Recipients</h2>
-      <p class="muted">${s.segment_status_count||0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
+    <div class="builder">
+      <div>
+        <div class="scard"><h2>Send schedule</h2>
+          <div class="row"><label>Day</label><select id="day">${dayOpts}</select>
+            <label style="min-width:auto">Time</label><select id="hour">${hourOpts}</select></div>
+          <div class="row"><label>Timezone</label><select id="tz" style="min-width:220px">${tzOpts}</select></div>
+          <div class="row"><label>Enabled</label><input type="checkbox" id="en" ${s.digest_enabled!==false?'checked':''}></div>
+        </div>
+        <div class="scard"><h2>Send rate</h2>
+          <div class="row"><label>Send</label><input type="number" id="rq" value="${rate.qty!=null?rate.qty:''}" min="1" placeholder="e.g. 25" style="min-width:90px"> emails <select id="rp">${perOpts}</select></div>
+          <p class="muted">The exact pace your emails go out. Choose what suits your list and sending reputation.</p>
+        </div>
+      </div>
+      <div>
+        <div class="scard"><h2>Links</h2>
+          <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:320px"></div>
+          <p class="muted">Where the email's bottom button points — your full updates page.</p>
+        </div>
+        <div class="scard"><h2>Recipients</h2>
+          <p class="muted">${s.segment_status_count||0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
+        </div>
+      </div>
     </div>
     <button class="btn" id="save">Save settings</button>
     <span class="muted" id="saved" style="margin-left:12px"></span>`;
