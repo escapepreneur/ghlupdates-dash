@@ -214,6 +214,10 @@ const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
 let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'needs', SKIP_ONBOARD = false, WIZ = { step: 0 };
+const CHECKOUT_QP = new URLSearchParams(location.search);
+const CHECKOUT_SUCCESS = CHECKOUT_QP.get('checkout') === 'success';
+const CHECKOUT_SESSION_ID = CHECKOUT_QP.get('session_id') || '';
+let CHECKOUT_HANDLED = false;
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -256,16 +260,55 @@ function renderLogin(msg) {
   app.innerHTML = `<div class="login"><div class="box">
     <img src="${GHL_LOGO}" alt="GHL Updates">
     <h1>Sign in</h1><p>We'll email you a magic link.</p>
-    <input id="em" type="text" placeholder="you@example.com" value="karen@escapepreneur.com">
+    <input id="em" type="text" placeholder="you@example.com">
     <button class="btn block" id="go">Send magic link</button>
     <p class="note" id="msg">${msg || ''}</p>
   </div></div>`;
   document.getElementById('go').onclick = async () => {
     const email = document.getElementById('em').value.trim();
     document.getElementById('msg').textContent = 'Sending…';
-    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.href.split('#')[0] } });
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
     document.getElementById('msg').textContent = error ? error.message : 'Check your inbox for the link.';
   };
+}
+
+// Post-payment handoff: Stripe redirects a brand-new customer here with no session and no
+// idea what to do next. If we can resolve their email from the checkout session, auto-send
+// the magic link so they don't have to type it in again.
+function renderCheckoutMsg(body, showForm, prefillEmail) {
+  app.innerHTML = `<div class="login"><div class="box">
+    <img src="${GHL_LOGO}" alt="GHL Updates">
+    <h1>Payment received!</h1><p>${body}</p>
+    ${showForm ? `<input id="em" type="text" placeholder="you@example.com" value="${prefillEmail ? esc(prefillEmail) : ''}">
+    <button class="btn block" id="go">Send magic link</button>` : ''}
+    <p class="note" id="msg"></p>
+  </div></div>`;
+  if (showForm) {
+    document.getElementById('go').onclick = async () => {
+      const email = document.getElementById('em').value.trim();
+      document.getElementById('msg').textContent = 'Sending…';
+      const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+      document.getElementById('msg').textContent = error ? error.message : 'Check your inbox for the link.';
+    };
+  }
+}
+
+async function handleCheckoutSuccess() {
+  history.replaceState(null, '', location.pathname);
+  renderCheckoutMsg('Setting up your login…', false);
+  let email = '';
+  if (CHECKOUT_SESSION_ID) {
+    try {
+      const r = await fetch(`${DASH}?action=session-email&session_id=${encodeURIComponent(CHECKOUT_SESSION_ID)}`);
+      const data = await r.json();
+      if (data.email) email = data.email;
+    } catch (e) {}
+  }
+  if (email) {
+    const { error } = await sb.auth.signInWithOtp({ email, options: { emailRedirectTo: location.origin + location.pathname } });
+    if (!error) { renderCheckoutMsg(`We've sent a login link to ${esc(email)}. Click it to finish setting up your account.`, false); return; }
+  }
+  renderCheckoutMsg("Enter your email and we'll send you a link to finish setting up your account.", true, email);
 }
 
 async function renderApp() {
@@ -714,7 +757,16 @@ async function renderSettings() {
   };
 }
 
-function route() { if (SESSION) renderApp(); else renderLogin(); }
+function route() {
+  if (SESSION) { renderApp(); return; }
+  if (CHECKOUT_SUCCESS) {
+    if (CHECKOUT_HANDLED) return; // already in flight/done from an earlier onAuthStateChange firing
+    CHECKOUT_HANDLED = true;
+    handleCheckoutSuccess();
+    return;
+  }
+  renderLogin();
+}
 sb.auth.onAuthStateChange((_e, s) => { SESSION = s; route(); });
 sb.auth.getSession().then(({ data }) => { SESSION = data.session; route(); });
 </script>
