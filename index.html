@@ -111,7 +111,15 @@
   .frame .bar i{width:10px;height:10px;border-radius:99px;background:#e4e8ec;display:inline-block}
   .frame .bar .subj{margin-left:8px;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .frame .bar .subj b{color:var(--ink);font-weight:600}
-  .frame iframe{display:block;width:100%;height:540px;border:0;background:#fff}
+  .frame iframe{display:block;width:100%;height:680px;border:0;background:#fff}
+  .emailgrid{grid-template-columns:290px 1fr}
+  .esidebar{display:flex;flex-direction:column;gap:12px}
+  .esidebar .sched{width:100%;justify-content:center}
+  .esidebar .btn{width:100%;justify-content:center}
+  .esidebar .actbar{flex-direction:column;align-items:stretch;gap:10px}
+  .esidebar .actbar .sp{display:none}
+  .esidebar .actbar .tgl{width:100%}
+  .esidebar .kpis{grid-template-columns:1fr;gap:10px;margin-bottom:0}
   /* settings */
   .scard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,24,40,.04);max-width:640px}
   .scard h2{font-size:15px;margin:0 0 14px}
@@ -561,35 +569,26 @@ async function renderEmail() {
   const view = document.getElementById('view');
   if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
   const [{ posts }, prev] = await Promise.all([api('posts'), api('preview')]);
-  const included = (posts || []).filter((p) => p.status === 'published' && p.in_digest);
   const publishedCount = (posts || []).filter((p) => p.status === 'published').length;
   const sched = scheduleLabel(DATA.settings || {});
   const active = DATA.agency.sending_active;
-  const itemRow = (p) => `<div class="post"><div class="pbody">
-    <div class="tags"><span class="pill published">included</span>${(p.categories||[]).slice(0,1).map((c)=>`<span class="pill cat">${esc(c)}</span>`).join('')}</div>
-    <div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description||'')}</div></div></div>`;
 
   view.innerHTML = `
-    <div class="head">
-      <div><h1>This week's email</h1><p>Preview what goes out, then send.</p></div>
-      <div class="sp"></div>
-      <div class="sched">Scheduled <b>${esc(sched)}</b></div>
-      <button class="btn outline" id="editsched">Edit schedule</button>
-      <button class="btn" id="sendnow">Send now</button>
-    </div>
-    ${active
-      ? `<div class="actbar on"><span>Weekly sending is <b>ON</b> — goes out automatically ${esc(sched)}.</span><span class="sp"></span><button class="tgl stop" id="acttoggle">Turn off</button></div>`
-      : `<div class="actbar off"><span>Weekly sending is <b>OFF</b>. Activate to start sending automatically on your schedule (${esc(sched)}).</span><span class="sp"></span><button class="tgl go" id="acttoggle">Activate sending</button></div>`}
-    <div class="kpis">
-      <div class="kpi"><b>${prev.post_count ?? 0}</b><span>in this email</span></div>
-      <div class="kpi"><b>${prev.recipient_count ?? '—'}</b><span>recipients</span></div>
-      <div class="kpi"><b>${publishedCount}</b><span>published</span></div>
-    </div>
-    <div class="builder">
-      <div>
-        <div class="sec">In this email</div>
-        <div class="sechint">Choose these on the <b style="color:var(--blue)">Posts</b> page.</div>
-        ${included.length ? included.map(itemRow).join('') : '<p class="muted">No posts selected. Tick "In email" on a published post on the Posts page.</p>'}
+    <div class="head"><div><h1>This week's email</h1><p>Preview what goes out, then send.</p></div></div>
+    <div class="builder emailgrid">
+      <div class="esidebar">
+        <div class="sched">Scheduled <b>${esc(sched)}</b></div>
+        <button class="btn outline" id="editsched">Edit schedule</button>
+        <button class="btn" id="sendnow">Send now</button>
+        ${active
+          ? `<div class="actbar on"><span>Weekly sending is <b>ON</b> — goes out automatically ${esc(sched)}.</span><button class="tgl stop" id="acttoggle">Turn off</button></div>`
+          : `<div class="actbar off"><span>Weekly sending is <b>OFF</b>. Activate to start sending automatically on your schedule (${esc(sched)}).</span><button class="tgl go" id="acttoggle">Activate sending</button></div>`}
+        <div class="kpis">
+          <div class="kpi"><b>${prev.post_count ?? 0}</b><span>in this email</span></div>
+          <div class="kpi"><b>${prev.recipient_count ?? '—'}</b><span>recipients</span></div>
+          <div class="kpi"><b>${publishedCount}</b><span>published</span></div>
+        </div>
+        <p class="sechint">To adjust which posts are included in this week's email, go to the <b style="color:var(--blue)">Posts</b> page.</p>
       </div>
       <div class="pvwrap">
         <div class="sec">Live preview</div>
