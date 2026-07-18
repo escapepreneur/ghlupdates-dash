@@ -55,8 +55,12 @@
   .top{display:flex;align-items:center;gap:12px;padding:13px 28px;background:#fff;border-bottom:1px solid var(--line)}
   .crumb{font-size:13px;color:var(--muted)}.crumb b{color:var(--ink);font-weight:600}
   .top .sp{flex:1}
-  .acct{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:99px;font-size:13px;font-weight:500;background:#fff}
+  .acctwrap{position:relative}
+  .acct{display:flex;align-items:center;gap:9px;padding:5px 12px 5px 6px;border:1px solid var(--line);border-radius:99px;font-size:13px;font-weight:500;background:#fff;cursor:pointer}
   .acct .av{width:28px;height:28px;border-radius:99px;background:#e8f0fd;color:var(--blue);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}
+  .acctmenu{position:absolute;top:calc(100% + 8px);right:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 26px rgba(16,24,40,.12);min-width:170px;padding:6px;z-index:40}
+  .acctmenu button{display:block;width:100%;text-align:left;background:none;border:0;padding:9px 12px;border-radius:8px;font-size:13px;font-weight:500;color:var(--ink);cursor:pointer;font:inherit}
+  .acctmenu button:hover{background:#f3f5f8}
   .content{padding:26px 28px 46px;max-width:1180px;width:100%}
   .head{display:flex;align-items:flex-end;gap:12px;margin-bottom:22px;flex-wrap:wrap}
   .head h1{font-size:24px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
@@ -336,12 +340,24 @@ async function renderApp() {
       <div class="top">
         <div class="crumb">${esc(DATA.agency.name)} <b>· ${esc(label)}</b></div>
         <div class="sp"></div>
-        <div class="acct"><span class="av">${esc(initials(SESSION.user.email))}</span>${esc(SESSION.user.email)}</div>
+        <div class="acctwrap">
+          <div class="acct" id="acctbtn"><span class="av">${esc(initials(SESSION.user.email))}</span>${esc(SESSION.user.email)}</div>
+          <div class="acctmenu" id="acctmenu" style="display:none"><button id="logoutbtn">Log out</button></div>
+        </div>
       </div>
       <div class="content" id="view"></div>
     </div>
   </div>`;
   app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { if (b.dataset.tab === TAB) return; TAB = b.dataset.tab; renderApp(); });
+  document.getElementById('acctbtn').onclick = (e) => {
+    e.stopPropagation();
+    const m = document.getElementById('acctmenu');
+    m.style.display = m.style.display === 'block' ? 'none' : 'block';
+  };
+  document.getElementById('logoutbtn').onclick = async () => {
+    await sb.auth.signOut();
+    location.href = location.origin + location.pathname;
+  };
   if (TAB === 'posts') renderPosts();
   else if (TAB === 'email') renderEmail();
   else if (TAB === 'requests') renderRequests();
@@ -767,6 +783,11 @@ function route() {
   }
   renderLogin();
 }
+document.addEventListener('click', (e) => {
+  if (e.target.closest('.acctwrap')) return;
+  const m = document.getElementById('acctmenu');
+  if (m) m.style.display = 'none';
+});
 sb.auth.onAuthStateChange((_e, s) => { SESSION = s; route(); });
 sb.auth.getSession().then(({ data }) => { SESSION = data.session; route(); });
 </script>
