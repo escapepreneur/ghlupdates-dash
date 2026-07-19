@@ -23,7 +23,8 @@
   /* login */
   .login{min-height:100vh;display:flex;align-items:center;justify-content:center;background:#141518;padding:24px}
   .login .box{background:#1E2127;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:34px 30px;box-shadow:0 16px 50px rgba(0,0,0,.35);text-align:center;width:100%;max-width:390px}
-  .login img{height:52px;width:auto;margin-bottom:14px}
+  .login img{height:52px;width:auto;margin-bottom:14px;animation:logofloat 2.6s ease-in-out infinite}
+  @keyframes logofloat{0%,100%{transform:translateY(0) scale(1)}50%{transform:translateY(-4px) scale(1.03)}}
   .login h1{font-size:19px;margin:4px 0 4px;color:#fff}
   .login p{color:#99a2ad;font-size:14px;margin:0 0 18px}
   .login input{width:100%;padding:12px 13px;border:1px solid rgba(255,255,255,.14);border-radius:10px;font:inherit;font-size:15px;margin-bottom:12px;background:#141619;color:#fff}
