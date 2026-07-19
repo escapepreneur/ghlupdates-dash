@@ -912,7 +912,13 @@ async function renderSettings() {
   const tzList = TZS.includes(tz) ? TZS : [tz, ...TZS];
   const tzOpts = tzList.map((z) => `<option value="${esc(z)}" ${z===tz?'selected':''}>${esc(z)}</option>`).join('');
   view.innerHTML = `
-    <div class="head"><div><h1>Settings</h1><p>Your company profile, contact details, and how your weekly email goes out.</p></div></div>
+    <div class="head">
+      <div><h1>Settings</h1><p>Your company profile, contact details, and how your weekly email goes out.</p></div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+        <span class="muted" id="saved"></span>
+        <button class="btn" id="save">Save settings</button>
+      </div>
+    </div>
 
     <div class="stabs">
       <button class="stab active" data-spanel="company">Company</button>
@@ -1010,10 +1016,7 @@ async function renderSettings() {
         </div>
       </div>
     </div>
-    </div>
-
-    <button class="btn" id="save">Save settings</button>
-    <span class="muted" id="saved" style="margin-left:12px"></span>`;
+    </div>`;
 
   view.querySelectorAll('.stab').forEach((b) => b.onclick = () => {
     view.querySelectorAll('.stab').forEach((x) => x.classList.toggle('active', x === b));
