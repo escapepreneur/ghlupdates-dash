@@ -506,6 +506,16 @@ function renderWizard() {
           <div class="field inline"><input type="number" id="wcommqty" min="1" value="${s.community_batch_size != null ? s.community_batch_size : ''}" placeholder="e.g. 5" style="max-width:100px"> <span>updates, as a round-up</span></div>
           <div class="hint">Once this many approved updates are queued, they go out together as one post - not one post per update. If fewer are ready, we hold and wait; next time might have more, and we include them all.</div>
         </div>
+        <div class="field"><label>Posting hours</label>
+          <div class="field inline">
+            <span>Between</span>
+            <select id="wcommstart">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.community_window_start === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select>
+            <span>and</span>
+            <select id="wcommend">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.community_window_end === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select>
+            <select id="wcommtz">${TZS.map((z) => `<option value="${esc(z)}" ${s.community_timezone === z ? 'selected' : ''}>${esc(z)}</option>`).join('')}</select>
+          </div>
+          <div class="hint">Round-ups only go out during these hours, even if the threshold above is reached earlier - so an update never lands at 3am.</div>
+        </div>
       </div>
       ${foot('Continue', true)}`;
   } else if (key === 'schedule') {
@@ -647,6 +657,9 @@ function renderWizard() {
           if (chanSel && chanSel.value) { settingsBody.community_channel_id = chanSel.value; settingsBody.community_channel_name = chanSel.options[chanSel.selectedIndex].textContent; }
           const ghlUser = gv('wghluser').trim(); if (ghlUser) settingsBody.community_ghl_user_id = ghlUser;
           const cq = Number(gv('wcommqty')); if (cq >= 1) settingsBody.community_batch_size = cq;
+          settingsBody.community_window_start = Number(gv('wcommstart'));
+          settingsBody.community_window_end = Number(gv('wcommend'));
+          settingsBody.community_timezone = gv('wcommtz');
         }
         await api('settings', settingsBody);
       }
@@ -826,16 +839,18 @@ async function renderCommunity() {
   const active = !!DATA.agency.community_active;
   const s = DATA.settings || {};
   const batchSize = s.community_batch_size;
-  const configured = DATA.agency.community_enabled && s.community_channel_id && s.community_ghl_user_id && batchSize;
+  const hasWindow = s.community_window_start != null && s.community_window_end != null && s.community_timezone;
+  const configured = DATA.agency.community_enabled && s.community_channel_id && s.community_ghl_user_id && batchSize && hasWindow;
+  const windowLabel = hasWindow ? `${String(s.community_window_start).padStart(2, '0')}:00–${String(s.community_window_end).padStart(2, '0')}:00 ${esc(s.community_timezone)}` : '';
   const queuedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div></div></div>`;
   const postedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="muted" style="font-size:11.5px;margin-top:4px">Posted ${esc(fmtSentDate(p.posted_at))}</div></div></div>`;
   view.innerHTML = `
     <div class="head"><div><h1>Community</h1><p>Once ${batchSize || 'enough'} updates are queued, they go out together as one round-up post - same as ESC Hub's own community.</p></div></div>
     ${!configured
-      ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, and how many updates make a round-up.</span></div>`
+      ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, how many updates make a round-up, and your posting hours.</span></div>`
       : active
-        ? `<div class="actbar on"><span>Community posting is <b>ON</b> — a round-up goes to <b>${esc(s.community_channel_name || 'your channel')}</b> every <b>${batchSize}</b> update${batchSize === 1 ? '' : 's'} (${queued.length}/${batchSize} queued now).</span><button class="tgl stop" id="commtoggle">Turn off</button></div>`
-        : `<div class="actbar off"><span>Community posting is <b>OFF</b>. Activate to start posting round-ups automatically.</span><button class="tgl go" id="commtoggle">Activate</button></div>`}
+        ? `<div class="actbar on"><span>Community posting is <b>ON</b> — a round-up goes to <b>${esc(s.community_channel_name || 'your channel')}</b> every <b>${batchSize}</b> update${batchSize === 1 ? '' : 's'} (${queued.length}/${batchSize} queued now), between <b>${windowLabel}</b>.</span><button class="tgl stop" id="commtoggle">Turn off</button></div>`
+        : `<div class="actbar off"><span>Community posting is <b>OFF</b>. Activate to start posting round-ups automatically between <b>${windowLabel}</b>.</span><button class="tgl go" id="commtoggle">Activate</button></div>`}
     <div class="builder">
       <div>
         <div class="sec">Queued for next round-up (${queued.length}${batchSize ? `/${batchSize}` : ''})</div>
@@ -943,7 +958,7 @@ async function renderSettings() {
       <div>
         <div class="scard"><h2>Enable</h2>
           <div class="row"><label>Post to a community</label><input type="checkbox" id="scomm" ${a.community_enabled ? 'checked' : ''}></div>
-          <p class="muted">Posts each update to a HighLevel community/group as it's approved — more often than the weekly email.</p>
+          <p class="muted">Bundles your approved updates into a round-up post once enough have built up — same as ESC Hub's own community.</p>
         </div>
         <div class="scard"><h2>Channel</h2>
           <p class="muted">What channel would you like posts shared in? If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</p>
@@ -962,6 +977,15 @@ async function renderSettings() {
         <div class="scard"><h2>Round-up size</h2>
           <div class="row"><label>Post every</label><input type="number" id="scommqty" min="1" value="${s.community_batch_size != null ? s.community_batch_size : ''}" placeholder="e.g. 5" style="min-width:90px"> <span>updates</span></div>
           <p class="muted">Once this many approved updates are queued, they go out together as one round-up post - not one post per update. If fewer are ready, we hold and wait; next time might have more, and we include them all.</p>
+        </div>
+        <div class="scard"><h2>Posting hours</h2>
+          <div class="row"><label>Between</label>
+            <select id="scommstart">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.community_window_start === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select>
+            <span>and</span>
+            <select id="scommend">${Array.from({ length: 24 }, (_, h) => `<option value="${h}" ${s.community_window_end === h ? 'selected' : ''}>${String(h).padStart(2, '0')}:00</option>`).join('')}</select>
+          </div>
+          <div class="row"><label>Timezone</label><select id="scommtz" style="min-width:220px">${TZS.map((z) => `<option value="${esc(z)}" ${s.community_timezone === z ? 'selected' : ''}>${esc(z)}</option>`).join('')}</select></div>
+          <p class="muted">Round-ups only go out during these hours, even if the threshold above is reached earlier - so an update never lands at 3am.</p>
         </div>
       </div>
     </div>
@@ -1030,6 +1054,9 @@ async function renderSettings() {
       community_enabled: document.getElementById('scomm').checked,
       community_ghl_user_id: document.getElementById('sghluser').value.trim(),
       community_batch_size: Number(document.getElementById('scommqty').value),
+      community_window_start: Number(document.getElementById('scommstart').value),
+      community_window_end: Number(document.getElementById('scommend').value),
+      community_timezone: document.getElementById('scommtz').value,
     };
     // Only touch digest_segment if a tag is actually entered - an empty save here
     // must NOT clobber an agency's existing legacy (fieldId/values) segment, like
