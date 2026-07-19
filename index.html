@@ -905,7 +905,7 @@ async function renderSettings() {
           <div class="row"><label>Phone</label><input type="text" id="pphone" value="${esc(a.owner_phone||'')}" style="min-width:200px"></div>
           <div class="row"><label>Email</label><input type="text" id="pemail" value="${esc(SESSION.user.email)}" style="min-width:220px"></div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><button class="mini go" id="emailchange" style="height:38px;width:auto">Update email</button><span class="muted" id="emailmsg"></span></div>
-          <p class="muted" style="margin-top:8px">For your security, we'll send a confirmation link to both your current address (${esc(SESSION.user.email)}) and the new one. The change takes effect only once both links have been confirmed.</p>
+          <p class="muted" style="margin-top:8px">For your security, we'll send a confirmation link to both your current address (${esc(SESSION.user.email)}) and the new one. The change takes effect only once both links have been confirmed. For best results, confirm both from the same browser on this device.</p>
         </div>
       </div>
     </div>
@@ -990,7 +990,7 @@ async function renderSettings() {
     const { error } = await sb.auth.updateUser({ email: newEmail }, { emailRedirectTo: location.origin + location.pathname });
     emailBtn.disabled = false;
     if (error) { localStorage.removeItem(EMAIL_CHANGE_KEY); msg.textContent = error.message; }
-    else msg.textContent = `Confirmation links sent to ${oldEmail} and ${newEmail}. Please confirm both to complete the change.`;
+    else msg.textContent = `Confirmation links sent to ${oldEmail} and ${newEmail}. Please confirm both, from this same browser, to complete the change.`;
   };
 
   const billingBtn = document.getElementById('billing');
