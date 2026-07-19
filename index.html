@@ -407,8 +407,8 @@ function renderWizard() {
       <div style="background:#eef5fe;border:1px solid #cfe0fb;border-radius:11px;padding:13px 15px;font-size:12.5px;color:#2f5b8f;line-height:1.5;margin-bottom:18px">
         <b>Safe to connect.</b> We only ever ask for <b>View Contacts</b> and <b>Edit Conversation Messages</b> (plus <b>Edit Social Media Posts</b> and <b>View Social Media Accounts</b> if you're enabling Community posting) — no access to billing, settings, or deleting anything. Your token is stored encrypted, used only to send your weekly email and, if enabled, post to your community, and you can revoke it in HighLevel anytime.
       </div>
-      <div class="field"><label>Private Integration token</label><input type="text" id="wtok" placeholder="pit-…"></div>
-      <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt"></div>
+      <div class="field"><label>Private Integration token</label><input type="text" id="wtok" placeholder="pit-…" value="${esc(localStorage.getItem('ghlu_wiz_hl_token') || '')}"></div>
+      <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt" value="${esc(localStorage.getItem('ghlu_wiz_hl_location') || '')}"></div>
       <div style="display:flex;align-items:center;gap:12px"><button class="mini go" id="wverify" style="height:38px">Verify &amp; connect</button><span class="muted" id="wvmsg"></span></div>
       ${foot('Continue', true)}`;
   } else if (key === 'content') {
@@ -474,13 +474,21 @@ function renderWizard() {
     if (c && t) { c.oninput = () => { t.value = c.value; }; t.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(t.value)) c.value = t.value; }; }
   }
   if (key === 'hl') {
+    // Persist the token/location locally as they're typed — a browser reload (e.g. after
+    // tabbing away to HighLevel to find the Location ID, then hitting Back) would otherwise
+    // wipe them, since the wizard has no other state persistence between renders.
+    const tokEl = document.getElementById('wtok'), locEl = document.getElementById('wloc');
+    if (tokEl) tokEl.oninput = () => localStorage.setItem('ghlu_wiz_hl_token', tokEl.value);
+    if (locEl) locEl.oninput = () => localStorage.setItem('ghlu_wiz_hl_location', locEl.value);
     const vb = document.getElementById('wverify');
     if (vb) vb.onclick = async () => {
       const msg = document.getElementById('wvmsg'); vb.disabled = true; msg.textContent = 'Verifying…'; msg.style.color = '';
       const r = await api('connect-hl', { token: gv('wtok'), location: gv('wloc') });
       vb.disabled = false;
-      if (r.ok) { msg.textContent = '✓ Connected'; msg.style.color = 'var(--ok)'; DATA.agency.hl_connected = true; }
-      else { msg.textContent = r.error || 'Could not connect'; msg.style.color = '#c0392b'; }
+      if (r.ok) {
+        msg.textContent = '✓ Connected'; msg.style.color = 'var(--ok)'; DATA.agency.hl_connected = true;
+        localStorage.removeItem('ghlu_wiz_hl_token'); localStorage.removeItem('ghlu_wiz_hl_location');
+      } else { msg.textContent = r.error || 'Could not connect'; msg.style.color = '#c0392b'; }
     };
   }
 
