@@ -219,6 +219,7 @@ const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
 let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'needs', SKIP_ONBOARD = false, WIZ = { step: 0 };
+let LAST_UID = null;
 const CHECKOUT_QP = new URLSearchParams(location.search);
 const CHECKOUT_SUCCESS = CHECKOUT_QP.get('checkout') === 'success';
 const CHECKOUT_SESSION_ID = CHECKOUT_QP.get('session_id') || '';
@@ -942,8 +943,19 @@ document.addEventListener('click', (e) => {
   const m = document.getElementById('acctmenu');
   if (m) m.style.display = 'none';
 });
-sb.auth.onAuthStateChange((_e, s) => { SESSION = s; route(); });
-sb.auth.getSession().then(({ data }) => { SESSION = data.session; route(); });
+sb.auth.onAuthStateChange((_e, s) => {
+  const uid = s?.user?.id || null;
+  const unchanged = uid === LAST_UID && DATA;
+  SESSION = s;
+  LAST_UID = uid;
+  // Supabase's client re-checks the session whenever the tab regains focus (to
+  // catch an expired token) and fires this same callback again - without this
+  // guard, every tab-switch-back wiped the whole dashboard and re-fetched
+  // everything, even though nothing about the login actually changed.
+  if (unchanged) return;
+  route();
+});
+sb.auth.getSession().then(({ data }) => { SESSION = data.session; LAST_UID = data.session?.user?.id || null; route(); });
 </script>
 </body>
 </html>
