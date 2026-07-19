@@ -488,11 +488,10 @@ function renderWizard() {
       <p class="hint" style="margin-top:14px">No tag yet, or want us to sort it later? Leave this blank and continue — you can set it anytime in Settings, but your weekly email won't send until it's configured.</p>
       ${foot('Continue', true)}`;
   } else if (key === 'content') {
-    const commRate = s.community_rate || {};
     inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
       <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
       <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
-      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll post each update there as it's approved - more often than the weekly email, since communities handle frequent short posts well.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll bundle your approved updates into a round-up post once enough have built up - same as ESC Hub's own community.</span></span></label>
       <div id="wcommfields" style="display:${a.community_enabled ? 'block' : 'none'};margin-top:12px;padding:14px 16px;background:#f7f9fb;border:1px solid var(--line);border-radius:11px">
         <div class="field"><label>What channel would you like posts shared in?</label>
           <div class="hint" style="margin-bottom:8px">If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</div>
@@ -503,9 +502,9 @@ function renderWizard() {
           <div class="hint" id="wchannelmsg">Needs HighLevel connected with the Social Media scopes.</div>
         </div>
         <div class="field"><label>Your HighLevel user ID</label><input type="text" id="wghluser" value="${esc(s.community_ghl_user_id || '')}" placeholder="e.g. 697a59884c5bde72bf158574"><div class="hint">Settings → My Staff in HighLevel → click your name → the ID is in the page URL. Used as the post's author.</div></div>
-        <div class="field"><label>Post rate</label>
-          <div class="field inline"><span>Post up to</span> <input type="number" id="wcommqty" min="1" value="${commRate.qty != null ? commRate.qty : ''}" placeholder="e.g. 5" style="max-width:100px"> per <select id="wcommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${commRate.period === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
-          <div class="hint">The most updates that will be posted to your channel in that time - so a backlog of approved posts doesn't all land at once.</div>
+        <div class="field"><label>Post every</label>
+          <div class="field inline"><input type="number" id="wcommqty" min="1" value="${s.community_batch_size != null ? s.community_batch_size : ''}" placeholder="e.g. 5" style="max-width:100px"> <span>updates, as a round-up</span></div>
+          <div class="hint">Once this many approved updates are queued, they go out together as one post - not one post per update. If fewer are ready, we hold and wait; next time might have more, and we include them all.</div>
         </div>
       </div>
       ${foot('Continue', true)}`;
@@ -647,7 +646,7 @@ function renderWizard() {
           const chanSel = document.getElementById('wchannel');
           if (chanSel && chanSel.value) { settingsBody.community_channel_id = chanSel.value; settingsBody.community_channel_name = chanSel.options[chanSel.selectedIndex].textContent; }
           const ghlUser = gv('wghluser').trim(); if (ghlUser) settingsBody.community_ghl_user_id = ghlUser;
-          const cq = Number(gv('wcommqty')); if (cq >= 1) settingsBody.community_rate = { qty: cq, period: gv('wcommperiod') };
+          const cq = Number(gv('wcommqty')); if (cq >= 1) settingsBody.community_batch_size = cq;
         }
         await api('settings', settingsBody);
       }
@@ -826,19 +825,20 @@ async function renderCommunity() {
   const { queued, posted } = await api('community-overview');
   const active = !!DATA.agency.community_active;
   const s = DATA.settings || {};
-  const configured = DATA.agency.community_enabled && s.community_channel_id && s.community_ghl_user_id && (s.community_rate || {}).qty;
+  const batchSize = s.community_batch_size;
+  const configured = DATA.agency.community_enabled && s.community_channel_id && s.community_ghl_user_id && batchSize;
   const queuedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div></div></div>`;
   const postedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="muted" style="font-size:11.5px;margin-top:4px">Posted ${esc(fmtSentDate(p.posted_at))}</div></div></div>`;
   view.innerHTML = `
-    <div class="head"><div><h1>Community</h1><p>Each approved update posts into your community channel as it's published — no bundling, no weekly wait.</p></div></div>
+    <div class="head"><div><h1>Community</h1><p>Once ${batchSize || 'enough'} updates are queued, they go out together as one round-up post - same as ESC Hub's own community.</p></div></div>
     ${!configured
-      ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, and a post rate.</span></div>`
+      ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, and how many updates make a round-up.</span></div>`
       : active
-        ? `<div class="actbar on"><span>Community posting is <b>ON</b> — posting into <b>${esc(s.community_channel_name || 'your channel')}</b>.</span><button class="tgl stop" id="commtoggle">Turn off</button></div>`
-        : `<div class="actbar off"><span>Community posting is <b>OFF</b>. Activate to start posting automatically.</span><button class="tgl go" id="commtoggle">Activate</button></div>`}
+        ? `<div class="actbar on"><span>Community posting is <b>ON</b> — a round-up goes to <b>${esc(s.community_channel_name || 'your channel')}</b> every <b>${batchSize}</b> update${batchSize === 1 ? '' : 's'} (${queued.length}/${batchSize} queued now).</span><button class="tgl stop" id="commtoggle">Turn off</button></div>`
+        : `<div class="actbar off"><span>Community posting is <b>OFF</b>. Activate to start posting round-ups automatically.</span><button class="tgl go" id="commtoggle">Activate</button></div>`}
     <div class="builder">
       <div>
-        <div class="sec">Queued to post (${queued.length})</div>
+        <div class="sec">Queued for next round-up (${queued.length}${batchSize ? `/${batchSize}` : ''})</div>
         ${queued.length ? queued.map(queuedRow).join('') : '<p class="muted">Nothing queued right now — publish more posts on the Posts page.</p>'}
       </div>
       <div>
@@ -959,9 +959,9 @@ async function renderSettings() {
           <div class="row"><label>Your HighLevel user ID</label><input type="text" id="sghluser" value="${esc(s.community_ghl_user_id || '')}" placeholder="e.g. 697a59884c5bde72bf158574" style="min-width:220px"></div>
           <p class="muted">Settings → My Staff in HighLevel → click your name → the ID is in the page URL.</p>
         </div>
-        <div class="scard"><h2>Post rate</h2>
-          <div class="row"><label>Post up to</label><input type="number" id="scommqty" min="1" value="${(s.community_rate || {}).qty != null ? s.community_rate.qty : ''}" placeholder="e.g. 5" style="min-width:90px"> <select id="scommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${(s.community_rate || {}).period === p ? 'selected' : ''}>per ${p}</option>`).join('')}</select></div>
-          <p class="muted">The most updates that will be posted to your channel in that time - so a backlog of approved posts doesn't all land at once.</p>
+        <div class="scard"><h2>Round-up size</h2>
+          <div class="row"><label>Post every</label><input type="number" id="scommqty" min="1" value="${s.community_batch_size != null ? s.community_batch_size : ''}" placeholder="e.g. 5" style="min-width:90px"> <span>updates</span></div>
+          <p class="muted">Once this many approved updates are queued, they go out together as one round-up post - not one post per update. If fewer are ready, we hold and wait; next time might have more, and we include them all.</p>
         </div>
       </div>
     </div>
@@ -1029,7 +1029,7 @@ async function renderSettings() {
       digest_rate: { qty: Number(document.getElementById('rq').value), period: document.getElementById('rp').value },
       community_enabled: document.getElementById('scomm').checked,
       community_ghl_user_id: document.getElementById('sghluser').value.trim(),
-      community_rate: { qty: Number(document.getElementById('scommqty').value), period: document.getElementById('scommperiod').value },
+      community_batch_size: Number(document.getElementById('scommqty').value),
     };
     // Only touch digest_segment if a tag is actually entered - an empty save here
     // must NOT clobber an agency's existing legacy (fieldId/values) segment, like
