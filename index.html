@@ -420,10 +420,22 @@ function renderWizard() {
       <p class="hint" style="margin-top:14px">No tag yet, or want us to sort it later? Leave this blank and continue — you can set it anytime in Settings, but your weekly email won't send until it's configured.</p>
       ${foot('Continue', true)}`;
   } else if (key === 'content') {
+    const commRate = s.community_rate || {};
     inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
       <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
       <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
-      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll post a weekly round-up of updates into it for you, alongside the email.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll post each update there as it's approved - more often than the weekly email, since communities handle frequent short posts well.</span></span></label>
+      <div id="wcommfields" style="display:${a.community_enabled ? 'block' : 'none'};margin-top:12px;padding:14px 16px;background:#f7f9fb;border:1px solid var(--line);border-radius:11px">
+        <div class="field"><label>Community channel</label>
+          <div style="display:flex;align-items:center;gap:12px">
+            <select id="wchannel" style="min-width:220px"><option value="${esc(s.community_channel_id || '')}">${s.community_channel_id ? esc(s.community_channel_name || s.community_channel_id) : 'No channel loaded yet'}</option></select>
+            <button class="mini go" id="wloadchannels" type="button" style="height:34px">Load channels</button>
+          </div>
+          <div class="hint" id="wchannelmsg">Needs HighLevel connected with the Social Media scopes.</div>
+        </div>
+        <div class="field"><label>Your HighLevel user ID</label><input type="text" id="wghluser" value="${esc(s.community_ghl_user_id || '')}" placeholder="e.g. 697a59884c5bde72bf158574"><div class="hint">Settings → My Staff in HighLevel → click your name → the ID is in the page URL. Used as the post's author.</div></div>
+        <div class="field inline"><label style="min-width:auto">Post up to</label><input type="number" id="wcommqty" min="1" value="${commRate.qty != null ? commRate.qty : ''}" placeholder="e.g. 5" style="max-width:100px"> per <select id="wcommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${commRate.period === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+      </div>
       ${foot('Continue', true)}`;
   } else if (key === 'schedule') {
     const dsel = `<select id="wday"><option value="">Choose a day</option>${DAYS.map((d, i) => `<option value="${i}" ${s.digest_day === i ? 'selected' : ''}>${d}</option>`).join('')}</select>`;
@@ -481,6 +493,21 @@ function renderWizard() {
   if (key === 'brand') {
     const c = document.getElementById('wcolor'), t = document.getElementById('wcolorhex');
     if (c && t) { c.oninput = () => { t.value = c.value; }; t.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(t.value)) c.value = t.value; }; }
+  }
+  if (key === 'content') {
+    const commToggle = document.getElementById('wcomm'), commFields = document.getElementById('wcommfields');
+    if (commToggle && commFields) commToggle.onchange = () => { commFields.style.display = commToggle.checked ? 'block' : 'none'; };
+    const loadBtn = document.getElementById('wloadchannels');
+    if (loadBtn) loadBtn.onclick = async () => {
+      const msg = document.getElementById('wchannelmsg'); loadBtn.disabled = true; msg.textContent = 'Loading…';
+      const r = await api('list-social-accounts');
+      loadBtn.disabled = false;
+      if (r.error) { msg.textContent = r.error; return; }
+      const sel = document.getElementById('wchannel');
+      const current = s.community_channel_id || '';
+      sel.innerHTML = (r.accounts || []).map((acc) => `<option value="${esc(acc.id)}" ${acc.id === current ? 'selected' : ''}>${esc(acc.name)}</option>`).join('') || '<option value="">No channels found</option>';
+      msg.textContent = (r.accounts || []).length ? `${r.accounts.length} channel(s) loaded.` : 'No channels found on this account.';
+    };
   }
   if (key === 'hl') {
     // Persist the token/location locally as they're typed — a browser reload (e.g. after
@@ -542,7 +569,16 @@ function renderWizard() {
     try {
       if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim() });
       else if (key === 'audience') { const tag = gv('wtag').trim(); if (tag) await api('settings', { digest_segment: { type: 'tag', tag } }); }
-      else if (key === 'content') await api('settings', { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') });
+      else if (key === 'content') {
+        const settingsBody = { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') };
+        if (gc('wcomm')) {
+          const chanSel = document.getElementById('wchannel');
+          if (chanSel && chanSel.value) { settingsBody.community_channel_id = chanSel.value; settingsBody.community_channel_name = chanSel.options[chanSel.selectedIndex].textContent; }
+          const ghlUser = gv('wghluser').trim(); if (ghlUser) settingsBody.community_ghl_user_id = ghlUser;
+          const cq = Number(gv('wcommqty')); if (cq >= 1) settingsBody.community_rate = { qty: cq, period: gv('wcommperiod') };
+        }
+        await api('settings', settingsBody);
+      }
       else if (key === 'schedule') { const d = gv('wday'), h = gv('whour'); if (d === '' || h === '') { showErr('Please choose a day and a time.'); next.disabled = false; return; } await api('settings', { digest_day: Number(d), digest_hour: Number(h), digest_timezone: gv('wtz'), digest_enabled: true }); }
       else if (key === 'rate') { const q = Number(gv('wqty')); if (!q || q < 1) { showErr('Enter how many emails to send per period.'); next.disabled = false; return; } await api('settings', { digest_rate: { qty: q, period: gv('wperiod') } }); }
       else if (key === 'page') {
@@ -776,6 +812,32 @@ async function renderSettings() {
         </div>
       </div>
     </div>
+
+    <div class="sec" style="margin-top:28px">Community posting</div>
+    <div class="builder">
+      <div>
+        <div class="scard"><h2>Enable</h2>
+          <div class="row"><label>Post to a community</label><input type="checkbox" id="scomm" ${a.community_enabled ? 'checked' : ''}></div>
+          <p class="muted">Posts each update to a HighLevel community/group as it's approved — more often than the weekly email.</p>
+        </div>
+        <div class="scard"><h2>Channel</h2>
+          <div class="row"><label>Community channel</label>
+            <select id="schannel" style="min-width:200px"><option value="${esc(s.community_channel_id || '')}">${s.community_channel_id ? esc(s.community_channel_name || s.community_channel_id) : 'No channel loaded yet'}</option></select>
+            <button class="mini go" id="sloadchannels" style="width:auto">Load channels</button>
+          </div>
+          <p class="muted" id="schannelmsg">Needs HighLevel connected with the Social Media scopes.</p>
+        </div>
+      </div>
+      <div>
+        <div class="scard"><h2>Author</h2>
+          <div class="row"><label>Your HighLevel user ID</label><input type="text" id="sghluser" value="${esc(s.community_ghl_user_id || '')}" placeholder="e.g. 697a59884c5bde72bf158574" style="min-width:220px"></div>
+          <p class="muted">Settings → My Staff in HighLevel → click your name → the ID is in the page URL.</p>
+        </div>
+        <div class="scard"><h2>Post rate</h2>
+          <div class="row"><label>Post up to</label><input type="number" id="scommqty" min="1" value="${(s.community_rate || {}).qty != null ? s.community_rate.qty : ''}" placeholder="e.g. 5" style="min-width:90px"> <select id="scommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${(s.community_rate || {}).period === p ? 'selected' : ''}>per ${p}</option>`).join('')}</select></div>
+        </div>
+      </div>
+    </div>
     <button class="btn" id="save">Save settings</button>
     <span class="muted" id="saved" style="margin-left:12px"></span>`;
 
@@ -788,6 +850,18 @@ async function renderSettings() {
     const r = await api('portal');
     if (r.url) location.href = r.url;
     else { alert(r.error || 'Could not open billing.'); billingBtn.disabled = false; billingBtn.textContent = o; }
+  };
+
+  const loadChanBtn = document.getElementById('sloadchannels');
+  if (loadChanBtn) loadChanBtn.onclick = async () => {
+    const msg = document.getElementById('schannelmsg'); loadChanBtn.disabled = true; msg.textContent = 'Loading…';
+    const r = await api('list-social-accounts');
+    loadChanBtn.disabled = false;
+    if (r.error) { msg.textContent = r.error; return; }
+    const sel = document.getElementById('schannel');
+    const current = s.community_channel_id || '';
+    sel.innerHTML = (r.accounts || []).map((acc) => `<option value="${esc(acc.id)}" ${acc.id === current ? 'selected' : ''}>${esc(acc.name)}</option>`).join('') || '<option value="">No channels found</option>';
+    msg.textContent = (r.accounts || []).length ? `${r.accounts.length} channel(s) loaded.` : 'No channels found on this account.';
   };
 
   document.getElementById('save').onclick = async () => {
@@ -803,12 +877,20 @@ async function renderSettings() {
       digest_enabled: document.getElementById('en').checked,
       all_updates_url: document.getElementById('au').value.trim(),
       digest_rate: { qty: Number(document.getElementById('rq').value), period: document.getElementById('rp').value },
+      community_enabled: document.getElementById('scomm').checked,
+      community_ghl_user_id: document.getElementById('sghluser').value.trim(),
+      community_rate: { qty: Number(document.getElementById('scommqty').value), period: document.getElementById('scommperiod').value },
     };
     // Only touch digest_segment if a tag is actually entered - an empty save here
     // must NOT clobber an agency's existing legacy (fieldId/values) segment, like
     // ESC Hub's own hand-set one, which this tag field can't represent.
     const stagVal = document.getElementById('stag').value.trim();
     if (stagVal) body.digest_segment = { type: 'tag', tag: stagVal };
+    // Same guard as the tag: only touch the channel if one's actually been loaded
+    // and selected, so an untouched select (still showing the placeholder option)
+    // can't overwrite an already-configured channel with an empty value.
+    const chanSel = document.getElementById('schannel');
+    if (chanSel && chanSel.value) { body.community_channel_id = chanSel.value; body.community_channel_name = chanSel.options[chanSel.selectedIndex].textContent; }
     document.getElementById('saved').textContent = 'Saving…';
     const r = await api('settings', body);
     document.getElementById('saved').textContent = r.ok ? 'Saved ✓' : (r.error || 'Error');
