@@ -344,8 +344,8 @@ async function renderApp() {
       ${navBtn('mail', "This week's email", 'email', false)}
       ${navBtn('chat', 'Community', 'community', false)}
       ${navBtn('clock', 'Send history', 'history', false)}
-      ${navBtn('gear', 'Settings', 'settings', false)}
       <div class="navbottom">
+        ${navBtn('gear', 'Settings', 'settings', false)}
         ${navBtn('spark', 'Requests', 'requests', false)}
         <button class="nav" id="navbilling"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${NAV_ICONS.card}</svg><span>Billing</span></button>
       </div>
@@ -377,8 +377,8 @@ async function renderApp() {
   if (navBilling) navBilling.onclick = async () => {
     navBilling.disabled = true; const o = navBilling.innerHTML; navBilling.innerHTML = navBilling.innerHTML.replace('Billing', 'Loading…');
     const r = await api('portal');
-    if (r.url) location.href = r.url;
-    else { alert(r.error || 'Could not open billing.'); navBilling.disabled = false; navBilling.innerHTML = o; }
+    if (r.url) window.open(r.url, '_blank'); else alert(r.error || 'Could not open billing.');
+    navBilling.disabled = false; navBilling.innerHTML = o;
   };
   renderTab();
 }
@@ -476,7 +476,10 @@ function renderWizard() {
           <div class="hint" id="wchannelmsg">Needs HighLevel connected with the Social Media scopes.</div>
         </div>
         <div class="field"><label>Your HighLevel user ID</label><input type="text" id="wghluser" value="${esc(s.community_ghl_user_id || '')}" placeholder="e.g. 697a59884c5bde72bf158574"><div class="hint">Settings → My Staff in HighLevel → click your name → the ID is in the page URL. Used as the post's author.</div></div>
-        <div class="field inline"><label style="min-width:auto">Post up to</label><input type="number" id="wcommqty" min="1" value="${commRate.qty != null ? commRate.qty : ''}" placeholder="e.g. 5" style="max-width:100px"> per <select id="wcommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${commRate.period === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+        <div class="field"><label>Post rate</label>
+          <div class="field inline"><span>Post up to</span> <input type="number" id="wcommqty" min="1" value="${commRate.qty != null ? commRate.qty : ''}" placeholder="e.g. 5" style="max-width:100px"> per <select id="wcommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${commRate.period === p ? 'selected' : ''}>${p}</option>`).join('')}</select></div>
+          <div class="hint">The most updates that will be posted to your channel in that time - so a backlog of approved posts doesn't all land at once.</div>
+        </div>
       </div>
       ${foot('Continue', true)}`;
   } else if (key === 'schedule') {
@@ -931,6 +934,7 @@ async function renderSettings() {
         </div>
         <div class="scard"><h2>Post rate</h2>
           <div class="row"><label>Post up to</label><input type="number" id="scommqty" min="1" value="${(s.community_rate || {}).qty != null ? s.community_rate.qty : ''}" placeholder="e.g. 5" style="min-width:90px"> <select id="scommperiod">${['day', 'hour', 'minute'].map((p) => `<option value="${p}" ${(s.community_rate || {}).period === p ? 'selected' : ''}>per ${p}</option>`).join('')}</select></div>
+          <p class="muted">The most updates that will be posted to your channel in that time - so a backlog of approved posts doesn't all land at once.</p>
         </div>
       </div>
     </div>
@@ -962,8 +966,8 @@ async function renderSettings() {
   if (billingBtn) billingBtn.onclick = async () => {
     billingBtn.disabled = true; const o = billingBtn.textContent; billingBtn.textContent = 'Loading…';
     const r = await api('portal');
-    if (r.url) location.href = r.url;
-    else { alert(r.error || 'Could not open billing.'); billingBtn.disabled = false; billingBtn.textContent = o; }
+    if (r.url) window.open(r.url, '_blank'); else alert(r.error || 'Could not open billing.');
+    billingBtn.disabled = false; billingBtn.textContent = o;
   };
 
   const loadChanBtn = document.getElementById('sloadchannels');
