@@ -365,8 +365,8 @@ async function renderApp() {
   else renderSettings();
 }
 
-const WSTEPS = ['welcome', 'brand', 'hl', 'content', 'schedule', 'rate', 'page', 'review'];
-const WTITLES = { welcome: 'Welcome', brand: 'Your brand', hl: 'Connect HighLevel', content: 'What to include', schedule: 'When to send', rate: 'Send rate', page: 'Updates page', review: 'Review' };
+const WSTEPS = ['welcome', 'brand', 'hl', 'audience', 'content', 'schedule', 'rate', 'page', 'review'];
+const WTITLES = { welcome: 'Welcome', brand: 'Your brand', hl: 'Connect HighLevel', audience: 'Recipients', content: 'What to include', schedule: 'When to send', rate: 'Send rate', page: 'Updates page', review: 'Review' };
 const CHK = '<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10 4 4 8-9"/></svg>';
 const gv = (id) => { const e = document.getElementById(id); return e ? e.value : ''; };
 const gc = (id) => { const e = document.getElementById(id); return e ? e.checked : false; };
@@ -411,6 +411,14 @@ function renderWizard() {
       <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt" value="${esc(localStorage.getItem('ghlu_wiz_hl_location') || '')}"></div>
       <div style="display:flex;align-items:center;gap:12px"><button class="mini go" id="wverify" style="height:38px">Verify &amp; connect</button><span class="muted" id="wvmsg"></span></div>
       ${foot('Continue', true)}`;
+  } else if (key === 'audience') {
+    const seg = s.digest_segment;
+    const curTag = seg && seg.type === 'tag' ? seg.tag : '';
+    inner = `<h1>Who gets this?</h1><p class="lead">Tag your members in HighLevel (e.g. "member" or "active-client"), then tell us the tag name here — that's how we'll know who to send your weekly email to.</p>
+      <div class="field"><label>HighLevel tag</label><input type="text" id="wtag" value="${esc(curTag)}" placeholder="e.g. member"></div>
+      <div style="display:flex;align-items:center;gap:12px"><button class="mini go" id="wsegcheck" style="height:38px">Check recipient count</button><span class="muted" id="wsegmsg">${s.recipient_count != null ? `Last checked: ${s.recipient_count} recipient(s)` : ''}</span></div>
+      <p class="hint" style="margin-top:14px">No tag yet, or want us to sort it later? Leave this blank and continue — you can set it anytime in Settings, but your weekly email won't send until it's configured.</p>
+      ${foot('Continue', true)}`;
   } else if (key === 'content') {
     inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
       <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
@@ -449,6 +457,7 @@ function renderWizard() {
       ${row('Brand colour', `<span style="display:inline-block;width:12px;height:12px;border-radius:3px;background:${esc(a.brand_primary || '#3B8AF0')};vertical-align:-1px;margin-right:6px"></span>${esc(a.brand_primary || '—')}`)}
       ${row('Logo', a.logo_url ? 'Added' : 'Not set')}
       ${row('HighLevel', a.hl_connected ? 'Connected' : 'Not connected yet')}
+      ${row('Recipients', s.digest_segment && s.digest_segment.type === 'tag' && s.digest_segment.tag ? `Tag: ${esc(s.digest_segment.tag)}` : 'Not set')}
       ${row('Labs', a.include_labs ? 'Included' : 'Off')}
       ${row('Templates', a.include_templates ? 'Included' : 'Off')}
       ${row('Community', a.community_enabled ? 'On' : 'Off')}
@@ -491,6 +500,18 @@ function renderWizard() {
       } else { msg.textContent = r.error || 'Could not connect'; msg.style.color = '#c0392b'; }
     };
   }
+  if (key === 'audience') {
+    const cb = document.getElementById('wsegcheck');
+    if (cb) cb.onclick = async () => {
+      const msg = document.getElementById('wsegmsg'); const tag = gv('wtag').trim();
+      if (!tag) { msg.textContent = 'Enter a tag first.'; msg.style.color = '#c0392b'; return; }
+      cb.disabled = true; msg.textContent = 'Checking…'; msg.style.color = '';
+      const r = await api('segment-count', { tag });
+      cb.disabled = false;
+      if (r.error) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
+      else { msg.textContent = `${r.count} recipient(s) found`; msg.style.color = 'var(--ok)'; }
+    };
+  }
 
   if (key === 'page') {
     const dnsBox = () => {
@@ -513,9 +534,14 @@ function renderWizard() {
       const ok = confirm('Continue without connecting HighLevel?\n\nWe can still build your branded updates page, but WITHOUT HighLevel connected you will NOT be able to:\n  • Send your weekly update email (it goes out from your own HighLevel)\n  • Use your member audience / choose who receives it\n  • Post a round-up to your community\n\nYou can connect it anytime later in Settings.');
       if (!ok) return;
     }
+    if (key === 'audience' && !gv('wtag').trim()) {
+      const ok = confirm("Continue without a recipient tag?\n\nYour weekly email won't be able to send until you set one - you can add it anytime in Settings.");
+      if (!ok) return;
+    }
     next.disabled = true;
     try {
       if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim() });
+      else if (key === 'audience') { const tag = gv('wtag').trim(); if (tag) await api('settings', { digest_segment: { type: 'tag', tag } }); }
       else if (key === 'content') await api('settings', { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') });
       else if (key === 'schedule') { const d = gv('wday'), h = gv('whour'); if (d === '' || h === '') { showErr('Please choose a day and a time.'); next.disabled = false; return; } await api('settings', { digest_day: Number(d), digest_hour: Number(h), digest_timezone: gv('wtz'), digest_enabled: true }); }
       else if (key === 'rate') { const q = Number(gv('wqty')); if (!q || q < 1) { showErr('Enter how many emails to send per period.'); next.disabled = false; return; } await api('settings', { digest_rate: { qty: q, period: gv('wperiod') } }); }
@@ -744,7 +770,9 @@ async function renderSettings() {
           <p class="muted">Where the email's bottom button points — your full updates page.</p>
         </div>
         <div class="scard"><h2>Recipients</h2>
-          <p class="muted">${s.segment_status_count||0} approved statuses · ${s.recipient_count ?? '—'} members. (Managed by us for now.)</p>
+          <div class="row"><label>HighLevel tag</label><input type="text" id="stag" value="${esc(s.digest_segment && s.digest_segment.type === 'tag' ? s.digest_segment.tag : '')}" placeholder="e.g. member" style="min-width:200px"></div>
+          <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><button class="mini go" id="segcheck" style="height:38px;width:auto">Check recipient count</button><span class="muted" id="segmsg">${s.recipient_count != null ? `Last checked: ${s.recipient_count} recipient(s)` : ''}</span></div>
+          <p class="muted" style="margin-top:8px">Who your weekly email goes out to — tag these contacts in HighLevel.</p>
         </div>
       </div>
     </div>
@@ -776,10 +804,26 @@ async function renderSettings() {
       all_updates_url: document.getElementById('au').value.trim(),
       digest_rate: { qty: Number(document.getElementById('rq').value), period: document.getElementById('rp').value },
     };
+    // Only touch digest_segment if a tag is actually entered - an empty save here
+    // must NOT clobber an agency's existing legacy (fieldId/values) segment, like
+    // ESC Hub's own hand-set one, which this tag field can't represent.
+    const stagVal = document.getElementById('stag').value.trim();
+    if (stagVal) body.digest_segment = { type: 'tag', tag: stagVal };
     document.getElementById('saved').textContent = 'Saving…';
     const r = await api('settings', body);
     document.getElementById('saved').textContent = r.ok ? 'Saved ✓' : (r.error || 'Error');
     DATA = await api('agency');
+  };
+
+  const segBtn = document.getElementById('segcheck');
+  if (segBtn) segBtn.onclick = async () => {
+    const msg = document.getElementById('segmsg'); const tag = document.getElementById('stag').value.trim();
+    if (!tag) { msg.textContent = 'Enter a tag first.'; msg.style.color = '#c0392b'; return; }
+    segBtn.disabled = true; msg.textContent = 'Checking…'; msg.style.color = '';
+    const r = await api('segment-count', { tag });
+    segBtn.disabled = false;
+    if (r.error) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
+    else { msg.textContent = `${r.count} recipient(s) found`; msg.style.color = 'var(--ok)'; }
   };
 }
 
