@@ -426,7 +426,8 @@ function renderWizard() {
       <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
       <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll post each update there as it's approved - more often than the weekly email, since communities handle frequent short posts well.</span></span></label>
       <div id="wcommfields" style="display:${a.community_enabled ? 'block' : 'none'};margin-top:12px;padding:14px 16px;background:#f7f9fb;border:1px solid var(--line);border-radius:11px">
-        <div class="field"><label>Community channel</label>
+        <div class="field"><label>What channel would you like posts shared in?</label>
+          <div class="hint" style="margin-bottom:8px">If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</div>
           <div style="display:flex;align-items:center;gap:12px">
             <select id="wchannel" style="min-width:220px"><option value="${esc(s.community_channel_id || '')}">${s.community_channel_id ? esc(s.community_channel_name || s.community_channel_id) : 'No channel loaded yet'}</option></select>
             <button class="mini go" id="wloadchannels" type="button" style="height:34px">Load channels</button>
@@ -821,6 +822,7 @@ async function renderSettings() {
           <p class="muted">Posts each update to a HighLevel community/group as it's approved — more often than the weekly email.</p>
         </div>
         <div class="scard"><h2>Channel</h2>
+          <p class="muted">What channel would you like posts shared in? If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</p>
           <div class="row"><label>Community channel</label>
             <select id="schannel" style="min-width:200px"><option value="${esc(s.community_channel_id || '')}">${s.community_channel_id ? esc(s.community_channel_name || s.community_channel_id) : 'No channel loaded yet'}</option></select>
             <button class="mini go" id="sloadchannels" style="width:auto">Load channels</button>
