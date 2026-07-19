@@ -219,11 +219,19 @@ const GHL_LOGO = 'logo.png';
 const sb = window.supabase.createClient(SUPABASE_URL, ANON);
 
 let SESSION = null, DATA = null, TAB = 'posts', POSTFILTER = 'needs', SKIP_ONBOARD = false, WIZ = { step: 0 };
-let LAST_UID = null;
+let LAST_UID = null, LAST_EMAIL = null;
 const CHECKOUT_QP = new URLSearchParams(location.search);
 const CHECKOUT_SUCCESS = CHECKOUT_QP.get('checkout') === 'success';
 const CHECKOUT_SESSION_ID = CHECKOUT_QP.get('session_id') || '';
 let CHECKOUT_HANDLED = false;
+// Supabase's email-change confirmation links redirect back here with type=email_change
+// in the URL hash (consumed/stripped by the client library almost immediately, so this
+// has to be read up front). Clicking EITHER of the two required links (old address, new
+// address) lands here the same way - we can't tell which one this is, so the message
+// below covers both: a harmless reminder if this was the second click, the actual
+// instruction if it was the first.
+const EMAIL_CHANGE_CLICKED = new URLSearchParams(location.hash.replace(/^#/, '')).get('type') === 'email_change';
+let EMAIL_CHANGE_NOTICE_SHOWN = false;
 const app = document.getElementById('app');
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -321,6 +329,11 @@ async function renderApp() {
   app.innerHTML = `<div class="login"><div class="box"><img src="${GHL_LOGO}" alt="GHL Updates" style="height:44px;margin-bottom:14px"><p class="muted">Loading your dashboard…</p></div></div>`;
   DATA = await api('agency');
   if (DATA.error) { renderLogin(DATA.error === 'unauthorized' ? 'That email is not on the access list.' : DATA.error); await sb.auth.signOut(); return; }
+  if (EMAIL_CHANGE_CLICKED && !EMAIL_CHANGE_NOTICE_SHOWN) {
+    EMAIL_CHANGE_NOTICE_SHOWN = true;
+    history.replaceState(null, '', location.pathname + location.search);
+    alert("Confirmed. If you're changing your email, this was ONE of the two required clicks - check your OTHER email address (your old one, or your new one, whichever you haven't clicked yet) for the second confirmation link. The change only takes effect once both are confirmed.");
+  }
   if (!DATA.agency.onboarded && !SKIP_ONBOARD) { renderWizard(); return; }
   const label = LABELS[TAB] || '';
   app.innerHTML = `<div class="app">
@@ -1026,17 +1039,25 @@ document.addEventListener('click', (e) => {
 });
 sb.auth.onAuthStateChange((_e, s) => {
   const uid = s?.user?.id || null;
-  const unchanged = uid === LAST_UID && DATA;
+  const email = s?.user?.email || null;
+  const unchanged = uid === LAST_UID && email === LAST_EMAIL && DATA;
   SESSION = s;
   LAST_UID = uid;
+  LAST_EMAIL = email;
   // Supabase's client re-checks the session whenever the tab regains focus (to
   // catch an expired token) and fires this same callback again - without this
   // guard, every tab-switch-back wiped the whole dashboard and re-fetched
-  // everything, even though nothing about the login actually changed.
+  // everything, even though nothing about the login actually changed. Comparing
+  // email too (not just uid) so a completed email-change still forces a refresh.
   if (unchanged) return;
   route();
 });
-sb.auth.getSession().then(({ data }) => { SESSION = data.session; LAST_UID = data.session?.user?.id || null; route(); });
+sb.auth.getSession().then(({ data }) => {
+  SESSION = data.session;
+  LAST_UID = data.session?.user?.id || null;
+  LAST_EMAIL = data.session?.user?.email || null;
+  route();
+});
 </script>
 </body>
 </html>
