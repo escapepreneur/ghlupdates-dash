@@ -332,7 +332,7 @@ async function renderApp() {
   if (EMAIL_CHANGE_CLICKED && !EMAIL_CHANGE_NOTICE_SHOWN) {
     EMAIL_CHANGE_NOTICE_SHOWN = true;
     history.replaceState(null, '', location.pathname + location.search);
-    alert("Confirmed. If you're changing your email, this was ONE of the two required clicks - check your OTHER email address (your old one, or your new one, whichever you haven't clicked yet) for the second confirmation link. The change only takes effect once both are confirmed.");
+    alert('Confirmed. If you requested an email change, this was one of two required confirmations. Please also confirm the link sent to your other address (old or new, whichever you have not yet confirmed) to complete the change.');
   }
   if (!DATA.agency.onboarded && !SKIP_ONBOARD) { renderWizard(); return; }
   const label = LABELS[TAB] || '';
@@ -875,7 +875,7 @@ async function renderSettings() {
           <div class="row"><label>Phone</label><input type="text" id="pphone" value="${esc(a.owner_phone||'')}" style="min-width:200px"></div>
           <div class="row"><label>Email</label><input type="text" id="pemail" value="${esc(SESSION.user.email)}" style="min-width:220px"></div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><button class="mini go" id="emailchange" style="height:38px;width:auto">Update email</button><span class="muted" id="emailmsg"></span></div>
-          <p class="muted" style="margin-top:8px">For security, we'll send a confirmation link to <b>both</b> your current email (${esc(SESSION.user.email)}) and the new one - you need to click <b>both</b> links before it takes effect. This confirms it's really you making the change, not just someone who got into your account.</p>
+          <p class="muted" style="margin-top:8px">For your security, we'll send a confirmation link to both your current address (${esc(SESSION.user.email)}) and the new one. The change takes effect only once both links have been confirmed.</p>
         </div>
       </div>
     </div>
@@ -954,7 +954,7 @@ async function renderSettings() {
     // change, so the agency is never orphaned by a stale email.
     const { error } = await sb.auth.updateUser({ email: newEmail }, { emailRedirectTo: location.origin + location.pathname });
     emailBtn.disabled = false;
-    msg.textContent = error ? error.message : `Check BOTH ${oldEmail} and ${newEmail} - click the link in each one to finish the change.`;
+    msg.textContent = error ? error.message : `Confirmation links sent to ${oldEmail} and ${newEmail}. Please confirm both to complete the change.`;
   };
 
   const billingBtn = document.getElementById('billing');
