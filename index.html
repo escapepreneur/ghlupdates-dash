@@ -862,7 +862,7 @@ async function renderSettings() {
           <div class="row"><label>Phone</label><input type="text" id="pphone" value="${esc(a.owner_phone||'')}" style="min-width:200px"></div>
           <div class="row"><label>Email</label><input type="text" id="pemail" value="${esc(SESSION.user.email)}" style="min-width:220px"></div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><button class="mini go" id="emailchange" style="height:38px;width:auto">Update email</button><span class="muted" id="emailmsg"></span></div>
-          <p class="muted" style="margin-top:8px">We'll send a confirmation link to the new address before it takes effect - your login won't change until you click it.</p>
+          <p class="muted" style="margin-top:8px">For security, we'll send a confirmation link to <b>both</b> your current email (${esc(SESSION.user.email)}) and the new one - you need to click <b>both</b> links before it takes effect. This confirms it's really you making the change, not just someone who got into your account.</p>
         </div>
       </div>
     </div>
@@ -929,16 +929,19 @@ async function renderSettings() {
   const emailBtn = document.getElementById('emailchange');
   if (emailBtn) emailBtn.onclick = async () => {
     const msg = document.getElementById('emailmsg');
+    const oldEmail = SESSION.user.email || '';
     const newEmail = document.getElementById('pemail').value.trim();
-    if (!newEmail || newEmail.toLowerCase() === (SESSION.user.email || '').toLowerCase()) { msg.textContent = 'Enter a different email address.'; return; }
+    if (!newEmail || newEmail.toLowerCase() === oldEmail.toLowerCase()) { msg.textContent = 'Enter a different email address.'; return; }
     emailBtn.disabled = true; msg.textContent = 'Sending…';
-    // Supabase's own "secure email change" flow: confirmation link(s) go out, and
-    // the login email only actually changes once clicked - nothing updates here yet.
-    // A database trigger on auth.users keeps agencies.owner_email in sync the moment
-    // Supabase applies the change, so the agency is never orphaned by a stale email.
+    // Supabase's own "secure email change" flow: confirmation links go to BOTH the
+    // old and new address (sent together, not staggered - that's a Supabase-managed
+    // flow, not something we control), and the login email only actually changes
+    // once BOTH are clicked - nothing updates here yet. A database trigger on
+    // auth.users keeps agencies.owner_email in sync the moment Supabase applies the
+    // change, so the agency is never orphaned by a stale email.
     const { error } = await sb.auth.updateUser({ email: newEmail }, { emailRedirectTo: location.origin + location.pathname });
     emailBtn.disabled = false;
-    msg.textContent = error ? error.message : 'Check your new email address for a confirmation link.';
+    msg.textContent = error ? error.message : `Check BOTH ${oldEmail} and ${newEmail} - click the link in each one to finish the change.`;
   };
 
   const billingBtn = document.getElementById('billing');
