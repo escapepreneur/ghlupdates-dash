@@ -396,7 +396,7 @@ function renderWizard() {
       <div class="field"><label>Logo URL</label><input type="text" id="wlogo" value="${esc(a.logo_url || '')}" placeholder="https://…/logo.png"><div class="hint">Paste a hosted image URL. Upload coming soon.</div></div>
       ${foot('Continue', true)}`;
   } else if (key === 'hl') {
-    inner = `<h1>Connect your HighLevel</h1><p class="lead">Your weekly email sends from your own HighLevel account, so it always comes from you. Optional — but without it, the email, audience, and community features stay switched off (you'll still get your branded page).</p>
+    inner = `<h1>Connect your HighLevel</h1><p class="lead">In order to send your Weekly Email and/or post in a GHL Community, connect your own HighLevel account — that way it always sends from you. This is optional, however without it you'll only get your branded updates page (no weekly email or community posting). This can be added later.</p>
       ${a.hl_connected ? `<div class="ok-badge">${CHK} Connected</div>` : ''}
       <ol class="steps-num">
         <li>In HighLevel: Settings → Private Integrations → New integration</li>
