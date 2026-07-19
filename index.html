@@ -247,7 +247,7 @@ const NAV_ICONS = {
   spark: '<path d="M11 2.5c.6 3.5 2 4.9 5.5 5.5-3.5.6-4.9 2-5.5 5.5-.6-3.5-2-4.9-5.5-5.5 3.5-.6 4.9-2 5.5-5.5z"/><path d="M17 14c.3 1.7 1 2.4 2.7 2.7-1.7.3-2.4 1-2.7 2.7-.3-1.7-1-2.4-2.7-2.7 1.7-.3 2.4-1 2.7-2.7z"/>',
   chat: '<path d="M4 5h14a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H9l-4 3v-3H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/>',
 };
-const LABELS = { posts: 'Posts', email: "This week's email", requests: 'Requests', settings: 'Settings' };
+const LABELS = { posts: 'Posts', email: "This week's email", community: 'Community', history: 'Send history', requests: 'Requests', settings: 'Settings' };
 const navBtn = (icon, label, tab, soon) => `<button class="nav${TAB===tab?' on':''}${soon?' soon':''}" ${soon?'':`data-tab="${tab}"`}>
   <svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${NAV_ICONS[icon]}</svg>
   <span>${label}</span>${soon?'<em>soon</em>':''}</button>`;
@@ -328,13 +328,12 @@ async function renderApp() {
       <div class="brand"><img src="${GHL_LOGO}" alt="GHL Updates"></div>
       ${navBtn('doc', 'Posts', 'posts', false)}
       ${navBtn('mail', "This week's email", 'email', false)}
+      ${navBtn('chat', 'Community', 'community', false)}
+      ${navBtn('clock', 'Send history', 'history', false)}
       ${navBtn('gear', 'Settings', 'settings', false)}
       <div class="navbottom">
         ${navBtn('spark', 'Requests', 'requests', false)}
-        <div class="navlabel">Coming soon</div>
-        ${navBtn('chat', 'Community', 'community', true)}
-        ${navBtn('clock', 'Send history', 'history', true)}
-        ${navBtn('card', 'Billing', 'billing', true)}
+        <button class="nav" id="navbilling"><svg viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${NAV_ICONS.card}</svg><span>Billing</span></button>
       </div>
       <div class="foot">Signed in as ${esc(DATA.agency.name)}</div>
     </aside>
@@ -360,8 +359,17 @@ async function renderApp() {
     await sb.auth.signOut();
     location.href = location.origin + location.pathname;
   };
+  const navBilling = document.getElementById('navbilling');
+  if (navBilling) navBilling.onclick = async () => {
+    navBilling.disabled = true; const o = navBilling.innerHTML; navBilling.innerHTML = navBilling.innerHTML.replace('Billing', 'Loading…');
+    const r = await api('portal');
+    if (r.url) location.href = r.url;
+    else { alert(r.error || 'Could not open billing.'); navBilling.disabled = false; navBilling.innerHTML = o; }
+  };
   if (TAB === 'posts') renderPosts();
   else if (TAB === 'email') renderEmail();
+  else if (TAB === 'community') renderCommunity();
+  else if (TAB === 'history') renderHistory();
   else if (TAB === 'requests') renderRequests();
   else renderSettings();
 }
@@ -748,6 +756,58 @@ async function renderEmail() {
     const r = await api('send-now');
     alert(r.ok ? 'Queued. Your email will start going out shortly (drip-paced).' : (r.error || 'Could not queue the send.'));
   };
+}
+
+async function renderCommunity() {
+  const view = document.getElementById('view');
+  if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
+  const { queued, posted } = await api('community-overview');
+  const active = !!DATA.agency.community_active;
+  const s = DATA.settings || {};
+  const configured = DATA.agency.community_enabled && s.community_channel_id && s.community_ghl_user_id && (s.community_rate || {}).qty;
+  const queuedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div></div></div>`;
+  const postedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="muted" style="font-size:11.5px;margin-top:4px">Posted ${esc(fmtSentDate(p.posted_at))}</div></div></div>`;
+  view.innerHTML = `
+    <div class="head"><div><h1>Community</h1><p>Each approved update posts into your community channel as it's published — no bundling, no weekly wait.</p></div></div>
+    ${!configured
+      ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, and a post rate.</span></div>`
+      : active
+        ? `<div class="actbar on"><span>Community posting is <b>ON</b> — posting into <b>${esc(s.community_channel_name || 'your channel')}</b>.</span><button class="tgl stop" id="commtoggle">Turn off</button></div>`
+        : `<div class="actbar off"><span>Community posting is <b>OFF</b>. Activate to start posting automatically.</span><button class="tgl go" id="commtoggle">Activate</button></div>`}
+    <div class="builder">
+      <div>
+        <div class="sec">Queued to post (${queued.length})</div>
+        ${queued.length ? queued.map(queuedRow).join('') : '<p class="muted">Nothing queued right now — publish more posts on the Posts page.</p>'}
+      </div>
+      <div>
+        <div class="sec">Recently posted</div>
+        ${posted.length ? posted.map(postedRow).join('') : '<p class="muted">Nothing posted yet.</p>'}
+      </div>
+    </div>`;
+  view.dataset.loaded = '1';
+  const tog = document.getElementById('commtoggle');
+  if (tog) tog.onclick = async () => {
+    if (!active && !confirm("Turn ON automatic community posting?\n\nEach approved update will be posted into your channel as it's published.")) return;
+    tog.disabled = true;
+    await api('settings', { community_active: !active });
+    DATA = await api('agency'); renderCommunity();
+  };
+}
+
+async function renderHistory() {
+  const view = document.getElementById('view');
+  if (!view.dataset.loaded) view.innerHTML = `<p class="muted">Loading…</p>`;
+  const { history } = await api('digest-history');
+  const STATUS_LABEL = { sent: 'Sent', failed: 'Failed' };
+  const row = (d) => `<div class="cl">
+    <div class="rt">${esc(d.subject || '(no subject)')}</div>
+    <div class="rmeta"><span class="pill ${d.status === 'sent' ? 'published' : 'flagged'}">${esc(STATUS_LABEL[d.status] || d.status)}</span></div>
+    <div class="muted" style="font-size:11.5px;margin-top:4px">${d.count} update${d.count === 1 ? '' : 's'} · ${d.sent_at ? esc(fmtSentDate(d.sent_at)) : 'unknown date'}</div>
+  </div>`;
+  view.innerHTML = `
+    <div class="head"><div><h1>Send history</h1><p>Past weekly emails, newest first.</p></div></div>
+    ${history.length ? history.map(row).join('') : '<p class="muted">No emails have gone out yet.</p>'}`;
+  view.dataset.loaded = '1';
 }
 
 async function renderSettings() {
