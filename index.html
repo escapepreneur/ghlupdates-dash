@@ -228,9 +228,11 @@ let CHECKOUT_HANDLED = false;
 // Supabase's email-change confirmation links redirect back here with type=email_change
 // in the URL hash (consumed/stripped by the client library almost immediately, so this
 // has to be read up front). Clicking EITHER of the two required links (old address, new
-// address) lands here the same way - we can't tell which one this is, so the message
-// below covers both: a harmless reminder if this was the second click, the actual
-// instruction if it was the first.
+// address) lands here the same way. We stash {from,to} in localStorage the moment the
+// change is requested (see Settings' "Update email" handler) so that on return we can
+// tell PRECISELY whether this was the completing click (session email now equals "to")
+// rather than just guessing - a real status page instead of a generic "might be done" alert.
+const EMAIL_CHANGE_KEY = 'ghlu_pending_email_change';
 const EMAIL_CHANGE_CLICKED = new URLSearchParams(location.hash.replace(/^#/, '')).get('type') === 'email_change';
 let EMAIL_CHANGE_NOTICE_SHOWN = false;
 const app = document.getElementById('app');
@@ -287,6 +289,24 @@ function renderLogin(msg) {
   };
 }
 
+// Shown after clicking either of the two required email-change confirmation links.
+// `complete` is known for certain (not guessed) by comparing the session's current
+// email against the "to" address stashed in localStorage when the change was requested.
+function renderEmailChangeStatus(complete, pending, currentEmail) {
+  const body = complete
+    ? `Your login email is now <b>${esc(currentEmail)}</b>.`
+    : pending
+      ? `This confirms one of the two required steps for your email change. To finish, please also click the confirmation link sent to <b>${esc(pending.from)}</b> and <b>${esc(pending.to)}</b> — whichever address you have not yet confirmed.`
+      : `This confirms one of the two required steps for an email change. Please also click the confirmation link sent to your other email address (old or new, whichever you have not yet confirmed) to complete it.`;
+  app.innerHTML = `<div class="login"><div class="box">
+    <img src="${GHL_LOGO}" alt="GHL Updates">
+    <h1>${complete ? 'Email updated' : 'Confirmation received'}</h1>
+    <p>${body}</p>
+    <button class="btn block" id="emailStatusContinue">Continue to dashboard</button>
+  </div></div>`;
+  document.getElementById('emailStatusContinue').onclick = () => renderApp();
+}
+
 // Post-payment handoff: Stripe redirects a brand-new customer here with no session and no
 // idea what to do next. If we can resolve their email from the checkout session, auto-send
 // the magic link so they don't have to type it in again.
@@ -333,7 +353,13 @@ async function renderApp() {
   if (EMAIL_CHANGE_CLICKED && !EMAIL_CHANGE_NOTICE_SHOWN) {
     EMAIL_CHANGE_NOTICE_SHOWN = true;
     history.replaceState(null, '', location.pathname + location.search);
-    alert('Confirmed. If you requested an email change, this was one of two required confirmations. Please also confirm the link sent to your other address (old or new, whichever you have not yet confirmed) to complete the change.');
+    let pending = null;
+    try { pending = JSON.parse(localStorage.getItem(EMAIL_CHANGE_KEY) || 'null'); } catch { pending = null; }
+    const currentEmail = SESSION.user.email || '';
+    const complete = !!(pending && currentEmail.toLowerCase() === pending.to.toLowerCase());
+    if (complete) localStorage.removeItem(EMAIL_CHANGE_KEY);
+    renderEmailChangeStatus(complete, pending, currentEmail);
+    return;
   }
   if (!DATA.agency.onboarded && !SKIP_ONBOARD) { renderWizard(); return; }
   const label = LABELS[TAB] || '';
@@ -951,6 +977,10 @@ async function renderSettings() {
     const newEmail = document.getElementById('pemail').value.trim();
     if (!newEmail || newEmail.toLowerCase() === oldEmail.toLowerCase()) { msg.textContent = 'Enter a different email address.'; return; }
     emailBtn.disabled = true; msg.textContent = 'Sending…';
+    // Stash which change is pending so that when a confirmation link redirects back,
+    // renderEmailChangeStatus can tell FOR CERTAIN whether it's actually complete
+    // (session email now equals "to") rather than just guessing.
+    localStorage.setItem(EMAIL_CHANGE_KEY, JSON.stringify({ from: oldEmail, to: newEmail }));
     // Supabase's own "secure email change" flow: confirmation links go to BOTH the
     // old and new address (sent together, not staggered - that's a Supabase-managed
     // flow, not something we control), and the login email only actually changes
@@ -959,7 +989,8 @@ async function renderSettings() {
     // change, so the agency is never orphaned by a stale email.
     const { error } = await sb.auth.updateUser({ email: newEmail }, { emailRedirectTo: location.origin + location.pathname });
     emailBtn.disabled = false;
-    msg.textContent = error ? error.message : `Confirmation links sent to ${oldEmail} and ${newEmail}. Please confirm both to complete the change.`;
+    if (error) { localStorage.removeItem(EMAIL_CHANGE_KEY); msg.textContent = error.message; }
+    else msg.textContent = `Confirmation links sent to ${oldEmail} and ${newEmail}. Please confirm both to complete the change.`;
   };
 
   const billingBtn = document.getElementById('billing');
