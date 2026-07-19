@@ -339,7 +339,7 @@ async function renderApp() {
     </aside>
     <div class="main">
       <div class="top">
-        <div class="crumb">${esc(DATA.agency.name)} <b>· ${esc(label)}</b></div>
+        <div class="crumb" id="crumb">${esc(DATA.agency.name)} <b>· ${esc(label)}</b></div>
         <div class="sp"></div>
         <div class="acctwrap">
           <div class="acct" id="acctbtn"><span class="av">${esc(initials(SESSION.user.email))}</span>${esc(SESSION.user.email)}</div>
@@ -349,7 +349,7 @@ async function renderApp() {
       <div class="content" id="view"></div>
     </div>
   </div>`;
-  app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => { if (b.dataset.tab === TAB) return; TAB = b.dataset.tab; renderApp(); });
+  app.querySelectorAll('.nav[data-tab]').forEach((b) => b.onclick = () => switchTab(b.dataset.tab));
   document.getElementById('acctbtn').onclick = (e) => {
     e.stopPropagation();
     const m = document.getElementById('acctmenu');
@@ -366,12 +366,30 @@ async function renderApp() {
     if (r.url) location.href = r.url;
     else { alert(r.error || 'Could not open billing.'); navBilling.disabled = false; navBilling.innerHTML = o; }
   };
+  renderTab();
+}
+
+function renderTab() {
   if (TAB === 'posts') renderPosts();
   else if (TAB === 'email') renderEmail();
   else if (TAB === 'community') renderCommunity();
   else if (TAB === 'history') renderHistory();
   else if (TAB === 'requests') renderRequests();
   else renderSettings();
+}
+
+// Switching tabs only needs to swap which view is shown - the sidebar/shell/agency
+// data haven't changed, so this avoids the old behaviour of calling renderApp()
+// (which re-fetched everything and flashed "Loading your dashboard..." on every click).
+function switchTab(tab) {
+  if (tab === TAB) return;
+  TAB = tab;
+  document.querySelectorAll('.nav[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === TAB));
+  const crumb = document.getElementById('crumb');
+  if (crumb) crumb.innerHTML = `${esc(DATA.agency.name)} <b>· ${esc(LABELS[TAB] || '')}</b>`;
+  const view = document.getElementById('view');
+  delete view.dataset.loaded;
+  renderTab();
 }
 
 const WSTEPS = ['welcome', 'brand', 'hl', 'audience', 'content', 'schedule', 'rate', 'page', 'review'];
@@ -741,7 +759,7 @@ async function renderEmail() {
       </div>
     </div>`;
   view.dataset.loaded = '1';
-  document.getElementById('editsched').onclick = () => { TAB = 'settings'; renderApp(); };
+  document.getElementById('editsched').onclick = () => switchTab('settings');
   const tog = document.getElementById('acttoggle');
   if (tog) tog.onclick = async () => {
     if (!active && !confirm(`Turn ON automatic weekly sending?\n\nYour email will then go out to your members every ${sched}.`)) return;
