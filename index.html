@@ -386,7 +386,7 @@ function renderWizard() {
       <p class="lead">Let's get ${esc(a.name || 'your account')} set up — about 5 minutes. Here's what you'll need:</p>
       <ul class="checklist">
         <li>${CHK} Your logo and brand colour</li>
-        <li>${CHK} A HighLevel Private Integration token (View Contacts + Send Conversations)</li>
+        <li>${CHK} A HighLevel Private Integration token (View Contacts + Edit Conversation Messages)</li>
         <li>${CHK} Roughly when you'd like your weekly email to go out</li>
       </ul>${foot("Let's go", false)}`;
   } else if (key === 'brand') {
@@ -400,11 +400,11 @@ function renderWizard() {
       ${a.hl_connected ? `<div class="ok-badge">${CHK} Connected</div>` : ''}
       <ol class="steps-num">
         <li>In HighLevel: Settings → Private Integrations → New integration</li>
-        <li>Enable scopes: <b>View Contacts</b> and <b>Send Conversations</b></li>
+        <li>Enable scopes: <b>View Contacts</b> and <b>Edit Conversation Messages</b></li>
         <li>Copy the token, and your Location ID (Settings → Business Profile)</li>
       </ol>
       <div style="background:#eef5fe;border:1px solid #cfe0fb;border-radius:11px;padding:13px 15px;font-size:12.5px;color:#2f5b8f;line-height:1.5;margin-bottom:18px">
-        <b>Safe to connect.</b> We only ask for <b>View Contacts</b> and <b>Send Conversations</b> — no access to billing, settings, or deleting anything. Your token is stored encrypted, used only to send your weekly email, and you can revoke it in HighLevel anytime.
+        <b>Safe to connect.</b> We only ask for <b>View Contacts</b> and <b>Edit Conversation Messages</b> — no access to billing, settings, or deleting anything. Your token is stored encrypted, used only to send your weekly email, and you can revoke it in HighLevel anytime.
       </div>
       <div class="field"><label>Private Integration token</label><input type="text" id="wtok" placeholder="pit-…"></div>
       <div class="field"><label>Location ID</label><input type="text" id="wloc" placeholder="e.g. EoD3KT6IiKx0oIXjInOt"></div>
