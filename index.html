@@ -83,6 +83,7 @@
   .tgl.stop{background:#fff;border:1px solid var(--line);color:var(--muted)}
   .builder{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px;align-items:start}
   .sec{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:0 0 5px}
+  .sec-lg{font-size:19px;letter-spacing:normal;text-transform:none;color:var(--ink);font-weight:700;margin:0 0 8px}
   .sechint{font-size:12px;color:var(--muted);margin:0 0 12px}
   .sechint b{color:var(--teal);font-weight:600}
   .post{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 16px;margin-bottom:12px;display:flex;gap:13px;align-items:flex-start;box-shadow:0 1px 2px rgba(16,24,40,.04)}
@@ -885,7 +886,7 @@ async function renderSettings() {
   view.innerHTML = `
     <div class="head"><div><h1>Settings</h1><p>Your company profile, contact details, and how your weekly email goes out.</p></div></div>
 
-    <div class="sec">Company</div>
+    <div class="sec-lg">Company</div>
     <div class="builder">
       <div>
         <div class="scard"><h2>Brand</h2>
@@ -910,7 +911,7 @@ async function renderSettings() {
       </div>
     </div>
 
-    <div class="sec" style="margin-top:28px">Email delivery</div>
+    <div class="sec-lg" style="margin-top:28px">Email delivery</div>
     <div class="builder">
       <div>
         <div class="scard"><h2>Send schedule</h2>
@@ -937,7 +938,7 @@ async function renderSettings() {
       </div>
     </div>
 
-    <div class="sec" style="margin-top:28px">Community posting</div>
+    <div class="sec-lg" style="margin-top:28px">Community posting</div>
     <div class="builder">
       <div>
         <div class="scard"><h2>Enable</h2>
