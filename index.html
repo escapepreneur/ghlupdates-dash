@@ -621,7 +621,7 @@ function renderWizard() {
     inner = `<h1>What to include</h1><p class="lead">You can change any of these later in Settings.</p>
       <label class="wtoggle"><input type="checkbox" id="wlabs" ${a.include_labs ? 'checked' : ''}><span><span class="tt">Labs / experimental features</span><span class="td">Show early features clients can opt into, clearly marked as experimental.</span></span></label>
       <label class="wtoggle"><input type="checkbox" id="wtpl" ${a.include_templates ? 'checked' : ''}><span><span class="tt">Template announcements</span><span class="td">Include HighLevel's recurring "new templates" posts.</span></span></label>
-      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll bundle your approved updates into a round-up post once enough have built up - same as ESC Hub's own community.</span></span></label>
+      <label class="wtoggle"><input type="checkbox" id="wcomm" ${a.community_enabled ? 'checked' : ''}><span><span class="tt">Community posts</span><span class="td">Turn this on if you run a community (like a HighLevel group). We'll bundle your approved updates into a round-up post once enough have built up.</span></span></label>
       <div id="wcommfields" style="display:${a.community_enabled ? 'block' : 'none'};margin-top:12px;padding:14px 16px;background:#f7f9fb;border:1px solid var(--line);border-radius:11px">
         <div class="field"><label>What channel would you like posts shared in?</label>
           <div class="hint" style="margin-bottom:8px">If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</div>
@@ -843,6 +843,10 @@ async function renderPosts() {
     const emailBtn = sent
       ? `<div class="mini sentflag" title="Sent ${esc(fmtSentDate(p.emailed_at))}">Sent ${esc(fmtSentDate(p.emailed_at))}</div>`
       : `<button class="mini dig${p.in_digest ? ' emailon' : ' emailoff'}" data-on="${p.in_digest ? '0' : '1'}" title="${p.in_digest ? 'Click to leave out of the email' : 'Click to include in the email'}">${p.in_digest ? 'In email' : 'Not in email'}</button>`;
+    const posted = p.status === 'published' && !!p.community_posted_at;
+    const communityBtn = posted
+      ? `<div class="mini sentflag" title="Posted ${esc(fmtSentDate(p.community_posted_at))}">Posted ${esc(fmtSentDate(p.community_posted_at))}</div>`
+      : `<button class="mini comm${p.in_community ? ' emailon' : ' emailoff'}" data-on="${p.in_community ? '0' : '1'}" title="${p.in_community ? 'Click to leave out of the community round-up' : 'Click to include in the community round-up'}">${p.in_community ? 'In community' : 'Not in community'}</button>`;
     return `<div class="post" data-id="${p.id}">
     <div class="pbody">
       <div class="tags"><span class="pill ${p.status}">${p.status}</span>${(p.categories || []).slice(0, 1).map((c) => `<span class="pill cat">${esc(c)}</span>`).join('')}${p.flag ? '<span class="pill flagged">flagged</span>' : ''}</div>
@@ -852,6 +856,7 @@ async function renderPosts() {
     <div class="pacts">
       <button class="mini edit">Edit</button>
       ${emailBtn}
+      ${communityBtn}
       ${p.status === 'published' ? '<button class="mini hold">Unpublish</button>' : '<button class="mini go pub">Publish</button>'}
     </div>
   </div>`;
@@ -865,6 +870,7 @@ async function renderPosts() {
   view.querySelectorAll('.post').forEach((r) => {
     const id = r.dataset.id;
     const dig = r.querySelector('.dig'); if (dig) dig.onclick = async () => { dig.disabled = true; await api('toggle-digest', { id, in_digest: dig.dataset.on === '1' }); renderPosts(); };
+    const comm = r.querySelector('.comm'); if (comm) comm.onclick = async () => { comm.disabled = true; await api('toggle-community', { id, in_community: comm.dataset.on === '1' }); renderPosts(); };
     const pub = r.querySelector('.pub'); if (pub) pub.onclick = async () => { pub.disabled = true; await api('publish', { id }); renderPosts(); };
     const hold = r.querySelector('.hold'); if (hold) hold.onclick = async () => { hold.disabled = true; await api('hold', { id }); renderPosts(); };
     const ed = r.querySelector('.edit'); if (ed) ed.onclick = () => editPost(id);
@@ -999,7 +1005,7 @@ async function renderCommunity() {
   const queuedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="pd">${esc(p.description || '')}</div></div></div>`;
   const postedRow = (p) => `<div class="post"><div class="pbody"><div class="pt">${esc(p.title)}</div><div class="muted" style="font-size:11.5px;margin-top:4px">Posted ${esc(fmtSentDate(p.posted_at))}</div></div></div>`;
   view.innerHTML = `
-    <div class="head"><div><h1>Community</h1><p>Once ${batchSize || 'enough'} updates are queued, they go out together as one round-up post - same as ESC Hub's own community.</p></div></div>
+    <div class="head"><div><h1>Community</h1><p>Once ${batchSize || 'enough'} updates are queued, they go out together as one round-up post.</p></div></div>
     ${!configured
       ? `<div class="actbar off"><span>Community posting isn't fully set up yet — head to <b style="color:var(--blue)">Settings</b> to turn it on and pick a channel, your HighLevel user ID, how many updates make a round-up, and your posting hours.</span></div>`
       : active
@@ -1145,7 +1151,7 @@ async function renderSettings() {
       <div>
         <div class="scard"><h2>Enable</h2>
           <div class="row"><label>Post to a community</label><input type="checkbox" id="scomm" ${a.community_enabled ? 'checked' : ''}></div>
-          <p class="muted">Bundles your approved updates into a round-up post once enough have built up — same as ESC Hub's own community.</p>
+          <p class="muted">Bundles your approved updates into a round-up post once enough have built up.</p>
         </div>
         <div class="scard"><h2>Channel</h2>
           <p class="muted">What channel would you like posts shared in? If you don't have one yet, create a community/group in HighLevel first — we suggest calling it something like "Software Updates" so it's obvious what it's for. Then load it below.</p>
