@@ -956,6 +956,21 @@ async function renderSettings() {
           <div class="row"><label>Brand colour</label><input type="color" class="swatch" id="ccolor" value="${esc(a.brand_primary||'#3B8AF0')}"><input type="text" id="ccolorhex" value="${esc(a.brand_primary||'#3B8AF0')}" style="max-width:140px"></div>
           <div class="row"><label>Logo URL</label><input type="text" id="clogo" value="${esc(a.logo_url||'')}" style="min-width:280px" placeholder="https://…/logo.png"></div>
         </div>
+        <div class="scard"><h2>Updates page</h2>
+          <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
+          <div class="row"><label>Your subdomain</label><input type="text" id="pdomain" value="${esc(s.custom_domain||'')}" placeholder="updates.yourbrand.com" style="min-width:240px"></div>
+          <div id="pdomaindns"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+            <button class="mini go" id="pdomainsave" style="width:auto">Save subdomain</button>
+            <button class="mini" id="pdomaincheck" style="width:auto">Check status</button>
+            <span class="muted" id="pdomainmsg"></span>
+          </div>
+          <details style="margin-top:14px">
+            <summary class="muted" style="cursor:pointer;font-size:13px">Use a different link instead</summary>
+            <div class="row" style="margin-top:10px"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:280px"></div>
+            <p class="muted">Overrides the page above - only needed if you already have a separate updates page elsewhere you'd rather link to.</p>
+          </details>
+        </div>
         <div class="scard"><h2>Billing</h2>
           ${a.has_billing
             ? `<p class="muted" style="margin-bottom:12px">Manage your card, invoices, or cancel your plan.</p><button class="mini go" id="billing" style="width:auto">Manage billing</button>`
@@ -989,21 +1004,6 @@ async function renderSettings() {
         </div>
       </div>
       <div>
-        <div class="scard"><h2>Updates page</h2>
-          <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
-          <div class="row"><label>Your subdomain</label><input type="text" id="pdomain" value="${esc(s.custom_domain||'')}" placeholder="updates.yourbrand.com" style="min-width:240px"></div>
-          <div id="pdomaindns"></div>
-          <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-            <button class="mini go" id="pdomainsave" style="width:auto">Save subdomain</button>
-            <button class="mini" id="pdomaincheck" style="width:auto">Check status</button>
-            <span class="muted" id="pdomainmsg"></span>
-          </div>
-          <details style="margin-top:14px">
-            <summary class="muted" style="cursor:pointer;font-size:13px">Use a different link instead</summary>
-            <div class="row" style="margin-top:10px"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:280px"></div>
-            <p class="muted">Overrides the page above - only needed if you already have a separate updates page elsewhere you'd rather link to.</p>
-          </details>
-        </div>
         <div class="scard"><h2>Recipients</h2>
           <div class="row"><label>HighLevel tag</label><input type="text" id="stag" value="${esc(s.digest_segment && s.digest_segment.type === 'tag' ? s.digest_segment.tag : '')}" placeholder="e.g. member" style="min-width:200px"></div>
           <div style="display:flex;align-items:center;gap:12px;margin-top:8px"><button class="mini go" id="segcheck" style="height:38px;width:auto">Check recipient count</button><span class="muted" id="segmsg">${s.recipient_count != null ? `Last checked: ${s.recipient_count} recipient(s)` : ''}</span></div>
