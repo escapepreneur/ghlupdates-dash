@@ -645,9 +645,12 @@ function renderWizard() {
       if (!tag) { msg.textContent = 'Enter a tag first.'; msg.style.color = '#c0392b'; return; }
       cb.disabled = true; msg.textContent = 'Checking…'; msg.style.color = '';
       const r = await api('segment-count', { tag });
+      // Save the tag as soon as it's confirmed working, not just on "Continue" -
+      // so checking it and then navigating away (e.g. Skip) can't silently lose it.
+      if (!r.error) await api('settings', { digest_segment: { type: 'tag', tag } });
       cb.disabled = false;
       if (r.error) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
-      else { msg.textContent = `${r.count} recipient(s) found`; msg.style.color = 'var(--ok)'; }
+      else { msg.textContent = `${r.count} recipient(s) found - saved.`; msg.style.color = 'var(--ok)'; }
     };
   }
 
@@ -1168,9 +1171,13 @@ async function renderSettings() {
     if (!tag) { msg.textContent = 'Enter a tag first.'; msg.style.color = '#c0392b'; return; }
     segBtn.disabled = true; msg.textContent = 'Checking…'; msg.style.color = '';
     const r = await api('segment-count', { tag });
+    // Save the tag as soon as it's confirmed working - previously this only checked
+    // it live and left saving to the separate page-level "Save settings" button,
+    // which looked like confirmation had already saved it when it hadn't.
+    if (!r.error) { await api('settings', { digest_segment: { type: 'tag', tag } }); DATA = await api('agency'); }
     segBtn.disabled = false;
     if (r.error) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
-    else { msg.textContent = `${r.count} recipient(s) found`; msg.style.color = 'var(--ok)'; }
+    else { msg.textContent = `${r.count} recipient(s) found - saved.`; msg.style.color = 'var(--ok)'; }
   };
 }
 
