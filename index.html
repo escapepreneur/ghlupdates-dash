@@ -1098,7 +1098,7 @@ async function renderSettings() {
   if (domainSaveBtn) domainSaveBtn.onclick = async () => {
     const msg = document.getElementById('pdomainmsg');
     domainSaveBtn.disabled = true; msg.textContent = 'Saving…'; msg.style.color = '';
-    const r = await api('save-domain', { domain: document.getElementById('pdomain').value.trim() });
+    const r = await api('save-domain', { domain: document.getElementById('pdomain').value.trim(), all_updates_url: document.getElementById('au').value.trim() });
     domainSaveBtn.disabled = false;
     if (r.error && !r.ok) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
     else { msg.textContent = r.status === 'not_set' ? 'Cleared.' : 'Saved.'; }
