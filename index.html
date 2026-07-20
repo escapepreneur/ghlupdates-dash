@@ -304,6 +304,46 @@ function domainDnsBox(domain, d) {
     <div class="hint">Once it's added, we issue the SSL certificate and activate your page — usually a few minutes.${d && d.error ? ` (${esc(d.error)})` : ''}</div>`;
 }
 
+/** A small preview thumbnail + hidden file input + "Upload" button, shared by the wizard's brand step and Settings' Brand card - `prefix` ('w' or 'c') keeps element ids unique per context. */
+function imgUploadRow(prefix, kind, url, size) {
+  const hasImg = /^https?:\/\/.+/i.test(url || '');
+  return `<div style="display:flex;align-items:center;gap:12px">
+    <div id="${prefix}${kind}preview" style="width:${size}px;height:${size}px;border-radius:8px;border:1px solid var(--line);background:#fafbfc;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none">
+      ${hasImg ? `<img src="${esc(url)}" alt="" style="max-width:100%;max-height:100%">` : `<span class="muted" style="font-size:9px;text-align:center">None</span>`}
+    </div>
+    <input type="file" id="${prefix}${kind}file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" style="display:none">
+    <button type="button" class="mini" id="${prefix}${kind}pick" style="width:auto">Upload ${kind}</button>
+    <span class="muted" id="${prefix}${kind}msg"></span>
+  </div>`;
+}
+
+/** Wires the pick-button + file-input + upload flow for one imgUploadRow instance. */
+function wireImgUpload(prefix, kind) {
+  const fileInput = document.getElementById(`${prefix}${kind}file`);
+  const pickBtn = document.getElementById(`${prefix}${kind}pick`);
+  const preview = document.getElementById(`${prefix}${kind}preview`);
+  const msg = document.getElementById(`${prefix}${kind}msg`);
+  if (!fileInput || !pickBtn) return;
+  pickBtn.onclick = () => fileInput.click();
+  fileInput.onchange = async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) { msg.textContent = 'That image is too large - please use one under 2MB.'; msg.style.color = '#c0392b'; return; }
+    pickBtn.disabled = true; msg.textContent = 'Uploading…'; msg.style.color = '';
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const base64 = reader.result.split(',')[1];
+      const r = await api('upload-image', { kind, contentType: file.type, data: base64 });
+      pickBtn.disabled = false;
+      if (r.error) { msg.textContent = r.error; msg.style.color = '#c0392b'; return; }
+      msg.textContent = 'Uploaded.'; msg.style.color = 'var(--ok)';
+      preview.innerHTML = `<img src="${esc(r.url)}" alt="" style="max-width:100%;max-height:100%">`;
+      DATA = await api('agency');
+    };
+    reader.readAsDataURL(file);
+  };
+}
+
 function renderLogin(msg) {
   app.innerHTML = `<div class="login"><div class="box">
     <img src="${GHL_LOGO}" alt="GHL Updates">
@@ -491,8 +531,8 @@ function renderWizard() {
     inner = `<h1>Your brand</h1><p class="lead">This is what your clients see on your updates page and emails.</p>
       <div class="field"><label>Business name</label><input type="text" id="wname" value="${esc(a.name || '')}"></div>
       <div class="field"><label>Brand colour</label><div class="field inline"><input type="color" class="swatch" id="wcolor" value="${esc(a.brand_primary || '#3B8AF0')}"><input type="text" id="wcolorhex" value="${esc(a.brand_primary || '#3B8AF0')}" style="max-width:140px"></div><div class="hint">Used for buttons and links in your emails and page.</div></div>
-      <div class="field"><label>Logo URL</label><input type="text" id="wlogo" value="${esc(a.logo_url || '')}" placeholder="https://…/logo.png"><div class="hint">Paste a hosted image URL. Upload coming soon.</div></div>
-      <div class="field"><label>Favicon URL</label><input type="text" id="wfavicon" value="${esc(a.favicon_url || '')}" placeholder="https://…/favicon.png"><div class="hint">Shows in the browser tab on your updates page. Optional - a small square image works best.</div></div>
+      <div class="field"><label>Logo</label>${imgUploadRow('w', 'logo', a.logo_url, 44)}</div>
+      <div class="field"><label>Favicon</label>${imgUploadRow('w', 'favicon', a.favicon_url, 28)}<div class="hint">Shows in the browser tab on your updates page. Optional - a small square image works best.</div></div>
       ${foot('Continue', true)}`;
   } else if (key === 'hl') {
     inner = `<h1>Connect your HighLevel</h1><p class="lead">In order to send your Weekly Email and/or post in a GHL Community, connect your own HighLevel account — that way it always sends from you. This is optional, however without it you'll only get your branded updates page (no weekly email or community posting). This can be added later.</p>
@@ -605,6 +645,8 @@ function renderWizard() {
   if (key === 'brand') {
     const c = document.getElementById('wcolor'), t = document.getElementById('wcolorhex');
     if (c && t) { c.oninput = () => { t.value = c.value; }; t.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(t.value)) c.value = t.value; }; }
+    wireImgUpload('w', 'logo');
+    wireImgUpload('w', 'favicon');
   }
   if (key === 'content') {
     const commToggle = document.getElementById('wcomm'), commFields = document.getElementById('wcommfields');
@@ -682,7 +724,7 @@ function renderWizard() {
     }
     next.disabled = true;
     try {
-      if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim(), favicon_url: gv('wfavicon').trim() });
+      if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim() });
       else if (key === 'audience') { const tag = gv('wtag').trim(); if (tag) await api('settings', { digest_segment: { type: 'tag', tag } }); }
       else if (key === 'content') {
         const settingsBody = { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') };
@@ -955,8 +997,8 @@ async function renderSettings() {
         <div class="scard"><h2>Brand</h2>
           <div class="row"><label>Business name</label><input type="text" id="cname" value="${esc(a.name||'')}" style="min-width:220px"></div>
           <div class="row"><label>Brand colour</label><input type="color" class="swatch" id="ccolor" value="${esc(a.brand_primary||'#3B8AF0')}"><input type="text" id="ccolorhex" value="${esc(a.brand_primary||'#3B8AF0')}" style="max-width:140px"></div>
-          <div class="row"><label>Logo URL</label><input type="text" id="clogo" value="${esc(a.logo_url||'')}" style="min-width:280px" placeholder="https://…/logo.png"></div>
-          <div class="row"><label>Favicon URL</label><input type="text" id="cfavicon" value="${esc(a.favicon_url||'')}" style="min-width:280px" placeholder="https://…/favicon.png"></div>
+          <div class="row"><label>Logo</label>${imgUploadRow('c', 'logo', a.logo_url, 44)}</div>
+          <div class="row"><label>Favicon</label>${imgUploadRow('c', 'favicon', a.favicon_url, 28)}</div>
           <p class="muted">Favicon shows in the browser tab on your updates page - a small square image works best.</p>
         </div>
         <div class="scard"><h2>Updates page</h2>
@@ -1061,6 +1103,8 @@ async function renderSettings() {
 
   const c = document.getElementById('ccolor'), t = document.getElementById('ccolorhex');
   if (c && t) { c.oninput = () => { t.value = c.value; }; t.oninput = () => { if (/^#[0-9a-fA-F]{6}$/.test(t.value)) c.value = t.value; }; }
+  wireImgUpload('c', 'logo');
+  wireImgUpload('c', 'favicon');
 
   const emailBtn = document.getElementById('emailchange');
   if (emailBtn) emailBtn.onclick = async () => {
@@ -1136,8 +1180,6 @@ async function renderSettings() {
     const body = {
       name: document.getElementById('cname').value.trim(),
       brand_primary: (document.getElementById('ccolorhex').value || document.getElementById('ccolor').value).trim(),
-      logo_url: document.getElementById('clogo').value.trim(),
-      favicon_url: document.getElementById('cfavicon').value.trim(),
       owner_name: document.getElementById('pname').value.trim(),
       owner_phone: document.getElementById('pphone').value.trim(),
       digest_day: Number(document.getElementById('day').value),
