@@ -492,6 +492,7 @@ function renderWizard() {
       <div class="field"><label>Business name</label><input type="text" id="wname" value="${esc(a.name || '')}"></div>
       <div class="field"><label>Brand colour</label><div class="field inline"><input type="color" class="swatch" id="wcolor" value="${esc(a.brand_primary || '#3B8AF0')}"><input type="text" id="wcolorhex" value="${esc(a.brand_primary || '#3B8AF0')}" style="max-width:140px"></div><div class="hint">Used for buttons and links in your emails and page.</div></div>
       <div class="field"><label>Logo URL</label><input type="text" id="wlogo" value="${esc(a.logo_url || '')}" placeholder="https://…/logo.png"><div class="hint">Paste a hosted image URL. Upload coming soon.</div></div>
+      <div class="field"><label>Favicon URL</label><input type="text" id="wfavicon" value="${esc(a.favicon_url || '')}" placeholder="https://…/favicon.png"><div class="hint">Shows in the browser tab on your updates page. Optional - a small square image works best.</div></div>
       ${foot('Continue', true)}`;
   } else if (key === 'hl') {
     inner = `<h1>Connect your HighLevel</h1><p class="lead">In order to send your Weekly Email and/or post in a GHL Community, connect your own HighLevel account — that way it always sends from you. This is optional, however without it you'll only get your branded updates page (no weekly email or community posting). This can be added later.</p>
@@ -681,7 +682,7 @@ function renderWizard() {
     }
     next.disabled = true;
     try {
-      if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim() });
+      if (key === 'brand') await api('settings', { name: gv('wname').trim(), brand_primary: (gv('wcolorhex') || gv('wcolor')).trim(), logo_url: gv('wlogo').trim(), favicon_url: gv('wfavicon').trim() });
       else if (key === 'audience') { const tag = gv('wtag').trim(); if (tag) await api('settings', { digest_segment: { type: 'tag', tag } }); }
       else if (key === 'content') {
         const settingsBody = { include_labs: gc('wlabs'), include_templates: gc('wtpl'), community_enabled: gc('wcomm') };
@@ -955,6 +956,8 @@ async function renderSettings() {
           <div class="row"><label>Business name</label><input type="text" id="cname" value="${esc(a.name||'')}" style="min-width:220px"></div>
           <div class="row"><label>Brand colour</label><input type="color" class="swatch" id="ccolor" value="${esc(a.brand_primary||'#3B8AF0')}"><input type="text" id="ccolorhex" value="${esc(a.brand_primary||'#3B8AF0')}" style="max-width:140px"></div>
           <div class="row"><label>Logo URL</label><input type="text" id="clogo" value="${esc(a.logo_url||'')}" style="min-width:280px" placeholder="https://…/logo.png"></div>
+          <div class="row"><label>Favicon URL</label><input type="text" id="cfavicon" value="${esc(a.favicon_url||'')}" style="min-width:280px" placeholder="https://…/favicon.png"></div>
+          <p class="muted">Favicon shows in the browser tab on your updates page - a small square image works best.</p>
         </div>
         <div class="scard"><h2>Updates page</h2>
           <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
@@ -1134,6 +1137,7 @@ async function renderSettings() {
       name: document.getElementById('cname').value.trim(),
       brand_primary: (document.getElementById('ccolorhex').value || document.getElementById('ccolor').value).trim(),
       logo_url: document.getElementById('clogo').value.trim(),
+      favicon_url: document.getElementById('cfavicon').value.trim(),
       owner_name: document.getElementById('pname').value.trim(),
       owner_phone: document.getElementById('pphone').value.trim(),
       digest_day: Number(document.getElementById('day').value),
