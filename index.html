@@ -287,6 +287,23 @@ const MONTHS = ['January','February','March','April','May','June','July','August
 function ordinal(n) { const v = n % 100; if (v >= 11 && v <= 13) return n + 'th'; return n + ({1:'st',2:'nd',3:'rd'}[n % 10] || 'th'); }
 function fmtSentDate(iso) { if (!iso) return ''; const d = new Date(iso); return `${ordinal(d.getDate())} of ${MONTHS[d.getMonth()]}`; }
 
+/** Colour-coded status pill for the custom-domain check, shared by Settings and the wizard's review step. */
+function domainPill(d) {
+  if (!d || d.status === 'not_set') return '<span class="pill drafted">Not set up</span>';
+  if (d.status === 'live') return '<span class="pill published">Live</span>';
+  if (d.status === 'pending' || d.status === 'not_registered') return '<span class="pill" style="background:#fff3e0;color:#8a5a00">Pending DNS/SSL</span>';
+  if (d.status === 'unknown') return '<span class="pill cat">Saved</span>';
+  return '<span class="pill flagged">Error</span>';
+}
+/** The CNAME instructions box shown while a domain is saved but not yet live. */
+function domainDnsBox(domain, d) {
+  if (!domain || (d && d.status === 'live')) return '';
+  return `<div class="hint" style="margin:8px 0 4px">Add this record at your DNS provider:</div>
+    <div style="font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;background:#f4f6f8;border:1px solid var(--line);border-radius:8px;padding:11px 13px;line-height:1.7">
+      Type&nbsp;&nbsp;<b>CNAME</b><br>Name&nbsp;&nbsp;<b>${esc(domain)}</b><br>Target&nbsp;<b>connect.ghlupdates.com</b></div>
+    <div class="hint">Once it's added, we issue the SSL certificate and activate your page — usually a few minutes.${d && d.error ? ` (${esc(d.error)})` : ''}</div>`;
+}
+
 function renderLogin(msg) {
   app.innerHTML = `<div class="login"><div class="box">
     <img src="${GHL_LOGO}" alt="GHL Updates">
@@ -569,7 +586,7 @@ function renderWizard() {
       ${row('Community', a.community_enabled ? 'On' : 'Off')}
       ${row('Schedule', esc(scheduleLabel(s)))}
       ${row('Send rate', r.qty ? `${r.qty} per ${r.period}` : 'Not set')}
-      ${row('Updates page', s.all_updates_url ? esc(s.all_updates_url) : 'Hosted page')}
+      ${row('Updates page', s.custom_domain ? esc(s.custom_domain) : 'Not set up (using our hosted page)')}
       ${foot('Finish setup', true)}`;
   }
 
@@ -680,8 +697,10 @@ function renderWizard() {
       else if (key === 'rate') { const q = Number(gv('wqty')); if (!q || q < 1) { showErr('Enter how many emails to send per period.'); next.disabled = false; return; } await api('settings', { digest_rate: { qty: q, period: gv('wperiod') } }); }
       else if (key === 'page') {
         const cd = gv('wcd').trim().toLowerCase();
-        if (cd) await api('settings', { custom_domain: cd, all_updates_url: 'https://' + cd });
-        // blank = defer; leave any existing setting untouched
+        // Blank = defer, leave any existing setting untouched. A non-blank value is
+        // saved AND registered with Cloudflare right away (previously this only saved
+        // the string - registration was a manual curl someone had to remember to run).
+        if (cd) { const r = await api('save-domain', { domain: cd }); if (r.error) { showErr(r.error); next.disabled = false; return; } }
       }
       else if (key === 'review') { await api('finish'); SKIP_ONBOARD = false; DATA = await api('agency'); TAB = 'posts'; renderApp(); return; }
       wizGo(WIZ.step + 1);
@@ -967,9 +986,20 @@ async function renderSettings() {
         </div>
       </div>
       <div>
-        <div class="scard"><h2>Links</h2>
-          <div class="row"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:320px"></div>
-          <p class="muted">Where the email's bottom button points — your full updates page.</p>
+        <div class="scard"><h2>Updates page</h2>
+          <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
+          <div class="row"><label>Your subdomain</label><input type="text" id="pdomain" value="${esc(s.custom_domain||'')}" placeholder="updates.yourbrand.com" style="min-width:240px"></div>
+          <div id="pdomaindns"></div>
+          <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+            <button class="mini go" id="pdomainsave" style="width:auto">Save</button>
+            <button class="mini" id="pdomaincheck" style="width:auto">Check status</button>
+            <span class="muted" id="pdomainmsg"></span>
+          </div>
+          <details style="margin-top:14px">
+            <summary class="muted" style="cursor:pointer;font-size:13px">Use a different link instead</summary>
+            <div class="row" style="margin-top:10px"><label>"See all" link</label><input type="text" id="au" value="${esc(s.all_updates_url||'')}" style="min-width:280px"></div>
+            <p class="muted">Overrides the page above - only needed if you already have a separate updates page elsewhere you'd rather link to.</p>
+          </details>
         </div>
         <div class="scard"><h2>Recipients</h2>
           <div class="row"><label>HighLevel tag</label><input type="text" id="stag" value="${esc(s.digest_segment && s.digest_segment.type === 'tag' ? s.digest_segment.tag : '')}" placeholder="e.g. member" style="min-width:200px"></div>
@@ -1056,6 +1086,33 @@ async function renderSettings() {
     if (r.url) window.open(r.url, '_blank'); else alert(r.error || 'Could not open billing.');
     billingBtn.disabled = false; billingBtn.textContent = o;
   };
+
+  const updateDomainUI = (d) => {
+    const pillEl = document.getElementById('domainstatus'); if (pillEl) pillEl.innerHTML = domainPill(d);
+    const dnsEl = document.getElementById('pdomaindns'); if (dnsEl) dnsEl.innerHTML = domainDnsBox(document.getElementById('pdomain').value.trim(), d);
+  };
+  const domainSaveBtn = document.getElementById('pdomainsave');
+  if (domainSaveBtn) domainSaveBtn.onclick = async () => {
+    const msg = document.getElementById('pdomainmsg');
+    domainSaveBtn.disabled = true; msg.textContent = 'Saving…'; msg.style.color = '';
+    const r = await api('save-domain', { domain: document.getElementById('pdomain').value.trim() });
+    domainSaveBtn.disabled = false;
+    if (r.error && !r.ok) { msg.textContent = r.error; msg.style.color = '#c0392b'; }
+    else { msg.textContent = r.status === 'not_set' ? 'Cleared.' : 'Saved.'; }
+    updateDomainUI(r);
+    DATA = await api('agency');
+  };
+  const domainCheckBtn = document.getElementById('pdomaincheck');
+  if (domainCheckBtn) domainCheckBtn.onclick = async () => {
+    const msg = document.getElementById('pdomainmsg');
+    domainCheckBtn.disabled = true; msg.textContent = 'Checking…'; msg.style.color = '';
+    const r = await api('domain-status');
+    domainCheckBtn.disabled = false; msg.textContent = '';
+    updateDomainUI(r);
+  };
+  // Populate the real status on load (the initial pill is just a guess based on whether custom_domain is set).
+  if (s.custom_domain) api('domain-status').then(updateDomainUI);
+  else updateDomainUI({ status: 'not_set' });
 
   const loadChanBtn = document.getElementById('sloadchannels');
   if (loadChanBtn) loadChanBtn.onclick = async () => {
