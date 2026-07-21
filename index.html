@@ -1082,6 +1082,8 @@ async function renderSettings() {
           <div class="row"><label>Logo</label>${imgUploadRow('c', 'logo', a.logo_url, 44)}</div>
           <div class="row"><label>Favicon</label>${imgUploadRow('c', 'favicon', a.favicon_url, 28)}</div>
           <p class="muted">Favicon shows in the browser tab on your updates page - a small square image works best.</p>
+          <div class="row"><label>Updates page font</label><select id="cfont" style="min-width:200px">${['', ...(a.google_fonts || [])].map((f) => `<option value="${esc(f)}" ${((a.font_family || '') === f) ? 'selected' : ''}>${f ? esc(f) : 'Default (Poppins)'}</option>`).join('')}</select></div>
+          <p class="muted">The font used on your public updates page. A short curated list, so every choice has the weights this page needs.</p>
         </div>
         <div class="scard"><h2>Updates page</h2>
           <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
@@ -1270,6 +1272,7 @@ async function renderSettings() {
     const body = {
       name: document.getElementById('cname').value.trim(),
       brand_primary: (document.getElementById('ccolorhex').value || document.getElementById('ccolor').value).trim(),
+      font_family: document.getElementById('cfont').value,
       owner_name: document.getElementById('pname').value.trim(),
       owner_phone: document.getElementById('pphone').value.trim(),
       digest_day: Number(document.getElementById('day').value),
