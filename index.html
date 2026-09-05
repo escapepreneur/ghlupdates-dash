@@ -569,7 +569,7 @@ function renderWizard() {
   const a = DATA.agency || {}, s = DATA.settings || {};
   const key = WSTEPS[WIZ.step];
   const pct = Math.round((WIZ.step / (WSTEPS.length - 1)) * 100);
-  const ownedUrl = 'https://gmqysuxbjucyiqfdddzu.supabase.co/functions/v1/updates?a=' + encodeURIComponent(a.slug || 'esc-hub');
+  const ownedUrl = 'https://' + encodeURIComponent(a.slug || 'esc-hub') + '.latestsoftwareupdates.com';
   const foot = (nextLabel, back) => `<div class="wizfoot">${back ? '<button class="lnk" id="wback">Back</button>' : ''}<div class="sp"></div><button class="btn" id="wnext">${nextLabel || 'Continue'}</button></div><div class="err" id="werr" style="display:none"></div>`;
   let inner = '';
 
@@ -667,10 +667,10 @@ function renderWizard() {
   } else if (key === 'page') {
     const cd = s.custom_domain || '';
     inner = `<h1>Your updates page</h1>
-      <p class="lead">We build and host your branded updates page for you. Point your own subdomain at it so it lives on your domain — fully your brand, with automatic HTTPS.</p>
-      <div class="field"><label>Your updates subdomain</label><input type="text" id="wcd" value="${esc(cd)}" placeholder="updates.yourbrand.com"><div class="hint">e.g. updates.yourbrand.com or news.yourbrand.com</div></div>
+      <p class="lead">Your branded updates page is already live at <b>${esc(a.slug)}.latestsoftwareupdates.com</b> — nothing else to do. Want it on your own domain instead? Point a subdomain at it below, fully your brand, with automatic HTTPS.</p>
+      <div class="field"><label>Your own subdomain (optional)</label><input type="text" id="wcd" value="${esc(cd)}" placeholder="updates.yourbrand.com"><div class="hint">e.g. updates.yourbrand.com or news.yourbrand.com</div></div>
       <div id="pdns"></div>
-      <p class="hint" style="margin-top:14px">Prefer to sort this later? Leave it blank and continue — you can add your subdomain anytime in Settings.</p>
+      <p class="hint" style="margin-top:14px">Leave it blank and continue — your page already works, and you can add your own domain anytime in Settings.</p>
       ${foot('Continue', true)}`;
   } else if (key === 'review') {
     const r = s.digest_rate || {};
@@ -687,7 +687,7 @@ function renderWizard() {
       ${row('Community', a.community_enabled ? 'On' : 'Off')}
       ${row('Schedule', esc(scheduleLabel(s)))}
       ${row('Send rate', r.qty ? `${r.qty} per ${r.period}` : 'Not set')}
-      ${row('Updates page', s.custom_domain ? esc(s.custom_domain) : 'Not set up (using our hosted page)')}
+      ${row('Updates page', s.custom_domain ? esc(s.custom_domain) : `${esc(a.slug)}.latestsoftwareupdates.com`)}
       ${foot('Finish setup', true)}`;
   }
 
@@ -1086,8 +1086,9 @@ async function renderSettings() {
           <p class="muted">The font used on your public updates page. A short curated list, so every choice has the weights this page needs.</p>
         </div>
         <div class="scard"><h2>Updates page</h2>
-          <div class="row"><label>Status</label><span id="domainstatus">${domainPill(s.custom_domain ? { status: 'unknown' } : { status: 'not_set' })}</span></div>
-          <div class="row"><label>Your subdomain</label><input type="text" id="pdomain" value="${esc(s.custom_domain||'')}" placeholder="updates.yourbrand.com" style="min-width:240px"></div>
+          <div class="row"><label>Status</label><span id="domainstatus">${s.custom_domain ? domainPill({ status: 'unknown' }) : '<span class="pill published">Live</span>'}</span></div>
+          ${s.custom_domain ? '' : `<p class="muted">Your page is already live at <b>${esc(a.slug)}.latestsoftwareupdates.com</b> — add your own subdomain below anytime, it's optional.</p>`}
+          <div class="row"><label>Your own subdomain (optional)</label><input type="text" id="pdomain" value="${esc(s.custom_domain||'')}" placeholder="updates.yourbrand.com" style="min-width:240px"></div>
           <div id="pdomaindns"></div>
           <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
             <button class="mini go" id="pdomainsave" style="width:auto">Save subdomain</button>
